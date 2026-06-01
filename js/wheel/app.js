@@ -6,7 +6,11 @@ const WheelApp = {
         wheel: null,
         currentPreset: null,
         customOptions: [],
-        aiGenerating: false
+        aiGenerating: false,
+        // 双转盘状态
+        isDualWheel: false,
+        dualWheelLocation: null,
+        dualWheelFirstResult: null
     },
 
     _safeGetElement(id) {
@@ -42,13 +46,19 @@ const WheelApp = {
             if (e.key === 'Enter') { e.preventDefault(); this.aiGenerate(); }
         });
 
-        // OCR占位
+        // Feature 1: OCR
         const ocrBtn = this._safeGetElement('ocrBtn');
+        const ocrFileInput = this._safeGetElement('ocrFileInput');
         if (ocrBtn) ocrBtn.addEventListener('click', () => this.ocrGenerate());
+        if (ocrFileInput) ocrFileInput.addEventListener('change', e => this._handleOCRFile(e));
 
-        // 地理位置占位
+        // Feature 2: 附近美食
         const locationBtn = this._safeGetElement('locationBtn');
         if (locationBtn) locationBtn.addEventListener('click', () => this.locationGenerate());
+
+        // Feature 3: 电影推荐
+        const movieBtn = this._safeGetElement('movieBtn');
+        if (movieBtn) movieBtn.addEventListener('click', () => this.movieGenerate());
 
         // 自定义转盘
         const customStartBtn = this._safeGetElement('customStartBtn');
@@ -64,17 +74,18 @@ const WheelApp = {
         const newWheelBtn = this._safeGetElement('newWheelBtn');
         if (spinBtn) spinBtn.addEventListener('click', () => this.spin());
         if (respinBtn) respinBtn.addEventListener('click', () => this.respin());
-        if (newWheelBtn) newWheelBtn.addEventListener('click', () => this.showView('home'));
+        if (newWheelBtn) newWheelBtn.addEventListener('click', () => {
+            this.state.isDualWheel = false;
+            this.showView('home');
+        });
     },
 
-    // 2.2: 视图切换焦点管理
     showView(viewName) {
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         const target = document.getElementById(`view${viewName.charAt(0).toUpperCase() + viewName.slice(1)}`);
         if (target) {
             target.classList.add('active');
             this.state.currentView = viewName;
-            // 2.2: 焦点移到新视图标题
             const heading = target.querySelector('h1, h2');
             if (heading) {
                 heading.setAttribute('tabindex', '-1');
@@ -87,7 +98,6 @@ const WheelApp = {
         document.querySelectorAll('.cat-filter').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.cat === cat);
         });
-
         document.querySelectorAll('.preset-btn').forEach(btn => {
             const preset = WHEEL_PRESETS[btn.dataset.preset];
             btn.style.display = (cat === 'all' || preset.category === cat) ? '' : 'none';
@@ -97,8 +107,8 @@ const WheelApp = {
     selectPreset(presetId) {
         const preset = WHEEL_PRESETS[presetId];
         if (!preset) return;
-
         this.state.currentPreset = presetId;
+        this.state.isDualWheel = false;
         this.startWheel(preset.name, preset.icon, preset.options, preset.weights);
     },
 
@@ -111,10 +121,11 @@ const WheelApp = {
         this.state.wheel = new WheelRenderer(canvas, options, weights);
         this.state.wheel.onResult = (result) => this.showResult(result, name);
 
-        // 重置结果区域
         const resultArea = this._safeGetElement('resultArea');
         const spinBtn = this._safeGetElement('spinBtn');
+        const resultInterpret = this._safeGetElement('resultInterpret');
         if (resultArea) resultArea.style.display = 'none';
+        if (resultInterpret) resultInterpret.style.display = 'none';
         if (spinBtn) { spinBtn.style.display = ''; spinBtn.disabled = false; }
 
         this.showView('wheel');
@@ -131,7 +142,9 @@ const WheelApp = {
     respin() {
         const resultArea = this._safeGetElement('resultArea');
         const spinBtn = this._safeGetElement('spinBtn');
+        const resultInterpret = this._safeGetElement('resultInterpret');
         if (resultArea) resultArea.style.display = 'none';
+        if (resultInterpret) resultInterpret.style.display = 'none';
         if (spinBtn) { spinBtn.style.display = ''; spinBtn.disabled = false; }
         if (this.state.wheel) {
             this.state.wheel.rotation = 0;
@@ -150,9 +163,172 @@ const WheelApp = {
         if (resultOption) resultOption.textContent = result.option;
         if (resultWheelName) resultWheelName.textContent = wheelName;
 
-        // 添加闪烁效果
         MoonEffects.createFlash('rgba(212,168,67,0.2)');
+
+        // Feature 2: 双转盘 — 第一个转盘结果触发第二个
+        if (this.state.isDualWheel && this.state.dualWheelLocation) {
+            this._handleDualWheelResult(result.option);
+            return;
+        }
+
+        // Feature 4: AI 结果解读
+        if (MoonConfig.get('wheelResultAI')) {
+            this._interpretResult(wheelName, result.option);
+        }
     },
+
+    // ========== Feature 1: OCR 截图识别 ==========
+
+    ocrGenerate() {
+        const fileInput = this._safeGetElement('ocrFileInput');
+        if (fileInput) fileInput.click();
+    },
+
+    async _handleOCRFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // 重置 input 以便同一文件可重复选择
+        event.target.value = '';
+
+        if (!MoonConfig.get('apiKey')) {
+            MoonUtils.showToast('请先配置 API Key');
+            return;
+        }
+
+        this.state.aiGenerating = true;
+        MoonUtils.showLoading('正在加载 OCR 引擎...');
+
+        try {
+            const result = await WheelAIGenerator.fromOCR(file);
+            MoonUtils.hideLoading();
+
+            if (result.success) {
+                this.startWheel(result.data.name, result.data.icon, result.data.options);
+            } else {
+                MoonUtils.showToast(result.error || 'OCR 识别失败');
+            }
+        } catch (error) {
+            MoonUtils.hideLoading();
+            MoonUtils.showToast(error.message || 'OCR 识别失败');
+        } finally {
+            this.state.aiGenerating = false;
+        }
+    },
+
+    // ========== Feature 2: 附近美食双转盘 ==========
+
+    async locationGenerate() {
+        if (this.state.aiGenerating) return;
+
+        this.state.aiGenerating = true;
+        const btn = this._safeGetElement('locationBtn');
+        if (btn) btn.disabled = true;
+
+        try {
+            if (!MoonConfig.get('apiKey')) {
+                throw new Error('请先配置 API Key');
+            }
+
+            MoonUtils.showLoading('正在获取位置信息...');
+            const result = await WheelAIGenerator.fromLocation();
+            MoonUtils.hideLoading();
+
+            if (result.success) {
+                this.state.isDualWheel = result.isDual || false;
+                this.state.dualWheelLocation = result.location || null;
+                this.startWheel(result.data.name, result.data.icon, result.data.options);
+            } else {
+                MoonUtils.showToast(result.error || '获取美食推荐失败');
+            }
+        } catch (error) {
+            MoonUtils.hideLoading();
+            MoonUtils.showToast(error.message);
+        } finally {
+            this.state.aiGenerating = false;
+            if (btn) btn.disabled = false;
+        }
+    },
+
+    async _handleDualWheelResult(firstOption) {
+        this.state.dualWheelFirstResult = firstOption;
+        this.state.isDualWheel = false; // 第二个转盘不是双转盘
+
+        MoonUtils.showLoading(`正在搜索附近的${firstOption}...`);
+
+        try {
+            const result = await WheelAIGenerator.fromLocationDetail(firstOption, this.state.dualWheelLocation);
+            MoonUtils.hideLoading();
+
+            if (result.success && result.data.options.length >= 2) {
+                // 短暂延迟后启动第二个转盘
+                setTimeout(() => {
+                    this.startWheel(result.data.name, result.data.icon, result.data.options);
+                }, 1000);
+            } else {
+                MoonUtils.showToast('未找到附近餐厅，换个菜系试试');
+            }
+        } catch (error) {
+            MoonUtils.hideLoading();
+            MoonUtils.showToast(error.message || '查询餐厅失败');
+        }
+    },
+
+    // ========== Feature 3: 电影选择器 ==========
+
+    async movieGenerate() {
+        if (this.state.aiGenerating) return;
+
+        this.state.aiGenerating = true;
+        const btn = this._safeGetElement('movieBtn');
+        if (btn) btn.disabled = true;
+
+        try {
+            if (!MoonConfig.get('apiKey')) {
+                throw new Error('请先配置 API Key');
+            }
+
+            MoonUtils.showLoading('正在生成电影推荐...');
+            const result = await WheelAIGenerator.getMovies();
+            MoonUtils.hideLoading();
+
+            if (result.success) {
+                this.state.isDualWheel = false;
+                this.startWheel(result.data.name, result.data.icon, result.data.options);
+            } else {
+                MoonUtils.showToast(result.error || '获取电影推荐失败');
+            }
+        } catch (error) {
+            MoonUtils.hideLoading();
+            MoonUtils.showToast(error.message);
+        } finally {
+            this.state.aiGenerating = false;
+            if (btn) btn.disabled = false;
+        }
+    },
+
+    // ========== Feature 4: 转盘结果 AI 解读 ==========
+
+    async _interpretResult(wheelName, resultOption) {
+        const interpretEl = this._safeGetElement('resultInterpret');
+        if (!interpretEl) return;
+
+        interpretEl.style.display = '';
+        interpretEl.innerHTML = '<div class="interpret-loading">✨ 月影正在解读命运的选择...</div>';
+
+        try {
+            const result = await WheelAIGenerator.interpretResult(wheelName, resultOption);
+            if (result.success) {
+                interpretEl.innerHTML = `<div class="interpret-content">${MoonUtils.formatText(result.content)}</div>`;
+            } else {
+                interpretEl.style.display = 'none';
+            }
+        } catch (error) {
+            interpretEl.style.display = 'none';
+        }
+    },
+
+    // ========== AI 通用生成 ==========
 
     async aiGenerate() {
         const input = this._safeGetElement('aiInput');
@@ -172,6 +348,7 @@ const WheelApp = {
 
             const result = await WheelAIGenerator.generateFromText(text);
             if (result.success) {
+                this.state.isDualWheel = false;
                 this.startWheel(result.data.name, result.data.icon, result.data.options);
             } else {
                 MoonUtils.showToast(result.error);
@@ -184,13 +361,7 @@ const WheelApp = {
         }
     },
 
-    ocrGenerate() {
-        MoonUtils.showToast('截图识别功能即将上线，敬请期待！');
-    },
-
-    locationGenerate() {
-        MoonUtils.showToast('附近美食功能即将上线！');
-    },
+    // ========== Feature 5: 自定义权重 ==========
 
     startCustom() {
         const input = this._safeGetElement('customInput');
@@ -198,11 +369,33 @@ const WheelApp = {
         const text = input.value.trim();
         if (!text) { MoonUtils.showToast('请输入选项'); return; }
 
-        const options = text.split(/[\n,，、;；]+/).map(s => s.trim()).filter(s => s.length > 0);
+        const lines = text.split(/[\n]+/).map(s => s.trim()).filter(s => s.length > 0);
+        const options = [];
+        const weights = [];
+        let hasWeights = false;
+
+        lines.forEach(line => {
+            // 支持逗号分割的多个选项
+            const parts = line.split(/[,，、;；]+/).map(s => s.trim()).filter(s => s.length > 0);
+            parts.forEach(part => {
+                // 解析 选项:权重 格式
+                const colonMatch = part.match(/^(.+):(\d+(?:\.\d+)?)$/);
+                if (colonMatch) {
+                    options.push(colonMatch[1].trim());
+                    weights.push(parseFloat(colonMatch[2]));
+                    hasWeights = true;
+                } else {
+                    options.push(part);
+                    weights.push(1);
+                }
+            });
+        });
+
         if (options.length < 2) { MoonUtils.showToast('至少需要2个选项'); return; }
         if (options.length > 12) { MoonUtils.showToast('最多支持12个选项'); return; }
 
-        this.startWheel('自定义转盘', '🎡', options);
+        this.state.isDualWheel = false;
+        this.startWheel('自定义转盘', '🎡', options, hasWeights ? weights : null);
     }
 };
 

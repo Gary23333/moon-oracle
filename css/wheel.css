@@ -163,3 +163,33 @@
     .ai-features { flex-direction: column; align-items: center; }
     .result-option { font-size: 2rem; }
 }
+
+/* AI 结果解读 */
+.result-interpret {
+    margin: var(--space-lg) 0;
+    padding: var(--space-lg);
+    background: linear-gradient(135deg, rgba(139,92,246,0.1), rgba(212,168,67,0.08));
+    border: 1px solid var(--color-purple-dark);
+    border-radius: var(--radius-lg);
+    animation: fadeIn 0.5s ease-out;
+}
+.result-interpret .interpret-loading {
+    color: var(--color-text-muted);
+    font-style: italic;
+    text-align: center;
+    animation: pulse 2s ease-in-out infinite;
+}
+.result-interpret .interpret-content {
+    color: var(--color-starlight);
+    font-size: 0.9rem;
+    line-height: 1.8;
+}
+.result-interpret .interpret-content strong { color: var(--color-gold); }
+.result-interpret .interpret-content em { color: var(--color-accent-teal); }
+
+/* AI 功能按钮禁用态 */
+.ai-feature-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
