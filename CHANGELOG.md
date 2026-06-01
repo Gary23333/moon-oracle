@@ -50,6 +50,37 @@
 
 ---
 
+## [2.0.0] - 2026-06-01
+
+### 🐛 修复 (Fixed)
+- **配置深合并** — `config.js` 浅展开导致嵌套提示词模板（tarotPrompts/wheelPrompts）部分字段丢失，改用递归 deepMerge
+- **追问上下文丢失** — 追问时 AI 丢失具体抽到的牌和正逆位信息，现在保存完整系统提示词并在追问中传入
+- **typeText 内存泄漏** — 打字动画 setInterval 不可取消导致内存泄漏，改为返回可取消控制器
+- **stripThinking 重复正则** — 同一正则执行两次，删除冗余调用
+- **getSpreadInfo 循环内调用** — 移到 forEach 外部，避免重复计算
+- **内联 onerror XSS 向量** — 移除 `onerror="this.style.display='none'"`，改用 addEventListener
+- **DOM null 检查** — 全站 getElementById 添加 null 安全保护
+- **死代码清理** — 移除 typeText 中未使用的 `allText` 变量和 TreeWalker
+
+### ✨ 新增 (Added)
+- **ARIA 无障碍属性** — 分类按钮 aria-pressed、牌阵/塔罗牌 role+tabindex+aria-label、Canvas aria-label
+- **键盘导航** — 牌阵卡片和塔罗牌支持 Enter/Space 操作
+- **焦点管理** — 视图切换自动 focus 到标题，Toast 添加 role="alert" aria-live
+- **细节页返回按钮** — 追问详情页可返回选牌页，无需重新开始
+- **重启二次确认** — confirm 对话框防止误操作丢失占卜结果
+- **追问显示思考过程** — showThinking 开启时追问也显示 AI 推理链
+- **图片加载兜底** — 卡牌图片加载失败后显示卡名文字
+- **占位按钮 disabled** — OCR/附近美食按钮添加禁用状态和视觉区分
+
+### ⚡ 性能优化 (Performance)
+- **粒子并发限制** — 最大 60 个活跃粒子，防止快速点击创建数百个临时 DOM
+- **Canvas 指针缓存** — 指针绘制到离屏 canvas，旋转动画每帧直接 drawImage
+
+### 🔍 SEO
+- 全站添加 `<meta name="description">` 和 Open Graph 标签（og:title, og:description, og:type）
+
+---
+
 ## [Unreleased]
 
 ### 🗺 计划中 (Planned)
@@ -61,4 +92,5 @@
 - PWA 离线支持
 - 更多牌阵和主题皮肤
 
+[2.0.0]: https://github.com/Gary23333/moon-oracle/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/Gary23333/moon-oracle/releases/tag/v1.0.0
