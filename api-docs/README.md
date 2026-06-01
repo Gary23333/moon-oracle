@@ -170,62 +170,78 @@ if (result.success) {
 
 ---
 
-## 4. 占位 API（后续接入）
+## 4. 高级功能 API
 
 ### 4.1 OCR 截图识别
 
 **用途**：从截图中识别文字，自动生成转盘选项
 
-**预留接口**：
+**实现方式**：Tesseract.js 浏览器端 OCR，无需后端服务
+
+**调用方式**：
 
 ```javascript
-WheelAIGenerator.fromOCR(imageFile)
-// 参数：imageFile - 用户上传的图片文件
-// 返回：{ success: false, error: '功能即将上线' }
+const result = await WheelAIGenerator.fromOCR(imageFile);
+// 参数：imageFile - File 对象（来自 <input type="file">）
+// 返回：
+// 成功: { success: true, data: { name, icon, options } }
+// 失败: { success: false, error: string, rawText?: string }
 ```
 
-**后续接入方案**：
-- 腾讯云 OCR API
-- 百度 OCR API
-- 阿里云 OCR API
+**流程**：
+1. 按需从 CDN 加载 Tesseract.js（首次约 2MB）
+2. 使用 `chi_sim+eng` 语言包识别中英文
+3. 多策略提取选项：行分割 → 去行号前缀 → 逗号分割
+4. 返回 2-12 个选项
 
-### 4.2 地理位置美食
+### 4.2 附近美食双转盘
 
-**用途**：基于用户位置推荐附近餐厅，支持双转盘（菜系→餐厅）
+**用途**：基于用户位置推荐附近餐厅，双转盘级联选择
 
-**预留接口**：
+**调用方式**：
 
 ```javascript
-WheelAIGenerator.fromLocation(cuisine)
-// 参数：cuisine - 可选，菜系名称
-// 返回：{ success: true/false, data/fallback }
+// 第一步：获取菜系转盘
+const result = await WheelAIGenerator.fromLocation();
+// 返回：{ success: true, data: { name, icon, options }, isDual: true, location: { lat, lng } }
+
+// 第二步：根据选中菜系获取餐厅转盘
+const detail = await WheelAIGenerator.fromLocationDetail(cuisine, coords);
+// 参数：cuisine - 选中的菜系名称, coords - { lat, lng }
+// 返回：{ success: true, data: { name, icon, options } }
 ```
 
-**后续接入方案**：
-- 高德地图 POI 搜索 API
-- 百度地图周边搜索 API
-- 腾讯地图地点搜索 API
+**流程**：
+1. `navigator.geolocation.getCurrentPosition()` 获取坐标
+2. 坐标发送给 DeepSeek，AI 推荐当地菜系（转盘1）
+3. 用户选择菜系后，再次调用 AI 推荐具体餐厅（转盘2）
+4. 定位被拒绝时，降级为通用美食推荐
 
-**双转盘流程**：
-1. 第一个转盘：选择菜系（火锅/烧烤/日料/...）
-2. 根据选中的菜系，调用地图 API 查询附近该类型餐厅
-3. 第二个转盘：选择具体餐厅
+### 4.3 电影推荐
 
-### 4.3 电影选择器
+**用途**：AI 生成热门/经典电影推荐转盘
 
-**用途**：获取当前上映电影，生成电影选择转盘
-
-**预留接口**：
+**调用方式**：
 
 ```javascript
-WheelAIGenerator.getMovies()
-// 返回：{ success: false, error: '功能即将上线', fallback: {...} }
+const result = await WheelAIGenerator.getMovies(genre);
+// 参数：genre - 可选，电影类型（如"科幻"、"喜剧"）
+// 返回：{ success: true, data: { name, icon, options } }
 ```
 
-**后续接入方案**：
-- 豆瓣电影 API
-- 猫眼电影 API
-- 淘票票 API
+### 4.4 转盘结果 AI 解读
+
+**用途**：转盘出结果后，调用 AI 做趣味解读
+
+**调用方式**：
+
+```javascript
+const result = await WheelAIGenerator.interpretResult(wheelName, resultOption);
+// 参数：wheelName - 转盘名称, resultOption - 命运选择的结果
+// 返回：{ success: true, content: string }
+```
+
+**触发条件**：配置项 `wheelResultAI` 为 `true` 时自动调用
 
 ---
 
@@ -293,7 +309,11 @@ try {
     "detailQuestion": "细节追问词"
   },
   "wheelPrompts": {
-    "generate": "转盘生成提示词"
+    "generate": "转盘生成提示词",
+    "location": "菜系推荐提示词",
+    "locationDetail": "餐厅推荐提示词",
+    "movie": "电影推荐提示词",
+    "resultInterpret": "结果解读提示词"
   }
 }
 ```
@@ -302,12 +322,16 @@ try {
 
 ## 7. 调用频率与限制
 
-| 功能 | 调用频率 | 说明 |
-|------|---------|------|
-| 塔罗占卜 | 每次占卜 1 次 | 含思考模式，耗时较长 |
-| 塔罗追问 | 每次追问 1 次 | 按需调用 |
-| 转盘 AI 生成 | 每次生成 1 次 | 无思考模式，响应较快 |
-| 转盘结果解读 | 可选 | 当前版本不调用 |
+| 功能 | 调用频率 | 思考模式 | 说明 |
+|------|---------|---------|------|
+| 塔罗占卜 | 1 次 | ✅ | 含完整牌义上下文 |
+| 塔罗追问 | 每次 1 次 | ✅ | 保持占卜上下文 |
+| 转盘 AI 生成 | 1 次 | ❌ | 响应较快 |
+| OCR 识别 | 0 次 | — | Tesseract.js 浏览器端 |
+| 附近美食 | 2 次 | ❌ | 菜系 + 餐厅 |
+| 电影推荐 | 1 次 | ❌ | AI 生成电影列表 |
+| 结果 AI 解读 | 1 次 | ❌ | 需开启 wheelResultAI |
+| 预设/自定义转盘 | 0 次 | — | 纯前端 |
 
 **建议**：
 - 添加请求频率限制（如 10 次/分钟）
