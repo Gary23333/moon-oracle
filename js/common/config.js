@@ -46,11 +46,24 @@ const MoonConfig = {
         return this.current;
     },
 
+    _deepMerge(target, source) {
+        const result = { ...target };
+        for (const key of Object.keys(source)) {
+            if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])
+                && target[key] && typeof target[key] === 'object' && !Array.isArray(target[key])) {
+                result[key] = this._deepMerge(target[key], source[key]);
+            } else {
+                result[key] = source[key];
+            }
+        }
+        return result;
+    },
+
     load() {
         const saved = localStorage.getItem('moon_oracle_config');
         if (saved) {
             try {
-                return { ...this.defaults, ...JSON.parse(saved) };
+                return this._deepMerge(this.defaults, JSON.parse(saved));
             } catch (e) {
                 return { ...this.defaults };
             }

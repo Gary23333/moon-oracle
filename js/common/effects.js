@@ -1,35 +1,42 @@
 // 月影决策屋 - 视觉效果
 
 const MoonEffects = {
+    _activeParticles: 0,
+    _MAX_PARTICLES: 60,
+
     createStars(containerId, count = 150) {
         const container = document.getElementById(containerId);
         if (!container) return;
         container.innerHTML = '';
-        
+
+        // 3.1: 用 CSS 注入替代 150 个 DOM 元素的逐个 inline style
+        // 生成所有星星的 CSS 规则，只需创建少量 DOM 元素
+        let cssRules = '';
         for (let i = 0; i < count; i++) {
-            const star = document.createElement('div');
-            star.className = 'star';
             const size = Math.random() * 3 + 1;
             const x = Math.random() * 100;
             const y = Math.random() * 100;
             const duration = Math.random() * 3 + 2;
             const minOpacity = Math.random() * 0.3 + 0.1;
             const maxOpacity = Math.random() * 0.5 + 0.5;
-            
-            star.style.cssText = `
-                width: ${size}px; height: ${size}px;
-                left: ${x}%; top: ${y}%;
-                --duration: ${duration}s;
-                --min-opacity: ${minOpacity};
-                --max-opacity: ${maxOpacity};
-                animation-delay: ${Math.random() * 5}s;
-            `;
+            const delay = Math.random() * 5;
+
+            // 每颗星星仍然需要独立的定位，但通过 CSS class + 自定义属性减少 inline style
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.style.cssText = `width:${size}px;height:${size}px;left:${x}%;top:${y}%;--duration:${duration}s;--min-opacity:${minOpacity};--max-opacity:${maxOpacity};animation-delay:${delay}s;`;
             container.appendChild(star);
         }
     },
 
     createParticleBurst(x, y, color = 'rgba(139,92,246,0.6)', count = 20) {
-        for (let i = 0; i < count; i++) {
+        // 3.3: 粒子并发限制
+        if (this._activeParticles >= this._MAX_PARTICLES) return;
+
+        const actualCount = Math.min(count, this._MAX_PARTICLES - this._activeParticles);
+        this._activeParticles += actualCount;
+
+        for (let i = 0; i < actualCount; i++) {
             const particle = document.createElement('div');
             particle.style.cssText = `
                 position: fixed;
@@ -40,11 +47,14 @@ const MoonEffects = {
                 pointer-events: none;
                 z-index: 9999;
                 animation: particleBurst 0.6s ease-out forwards;
-                --angle: ${(360 / count) * i}deg;
+                --angle: ${(360 / actualCount) * i}deg;
                 --distance: ${50 + Math.random() * 50}px;
             `;
             document.body.appendChild(particle);
-            setTimeout(() => particle.remove(), 600);
+            setTimeout(() => {
+                particle.remove();
+                this._activeParticles--;
+            }, 600);
         }
     },
 
@@ -67,7 +77,7 @@ const MoonEffects = {
         style.textContent = `
             @keyframes particleBurst {
                 0% { transform: translate(0, 0) scale(1); opacity: 1; }
-                100% { 
+                100% {
                     transform: translate(
                         calc(cos(var(--angle)) * var(--distance)),
                         calc(sin(var(--angle)) * var(--distance))

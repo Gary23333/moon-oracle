@@ -9,6 +9,12 @@ const WheelApp = {
         aiGenerating: false
     },
 
+    _safeGetElement(id) {
+        const el = document.getElementById(id);
+        if (!el) console.warn(`[WheelApp] 元素 #${id} 未找到`);
+        return el;
+    },
+
     init() {
         MoonConfig.init();
         MoonEffects.init();
@@ -29,35 +35,51 @@ const WheelApp = {
         });
 
         // AI生成
-        document.getElementById('aiGenerateBtn').addEventListener('click', () => this.aiGenerate());
-        document.getElementById('aiInput').addEventListener('keydown', e => {
+        const aiGenerateBtn = this._safeGetElement('aiGenerateBtn');
+        const aiInput = this._safeGetElement('aiInput');
+        if (aiGenerateBtn) aiGenerateBtn.addEventListener('click', () => this.aiGenerate());
+        if (aiInput) aiInput.addEventListener('keydown', e => {
             if (e.key === 'Enter') { e.preventDefault(); this.aiGenerate(); }
         });
 
         // OCR占位
-        document.getElementById('ocrBtn').addEventListener('click', () => this.ocrGenerate());
+        const ocrBtn = this._safeGetElement('ocrBtn');
+        if (ocrBtn) ocrBtn.addEventListener('click', () => this.ocrGenerate());
 
         // 地理位置占位
-        document.getElementById('locationBtn').addEventListener('click', () => this.locationGenerate());
+        const locationBtn = this._safeGetElement('locationBtn');
+        if (locationBtn) locationBtn.addEventListener('click', () => this.locationGenerate());
 
         // 自定义转盘
-        document.getElementById('customStartBtn').addEventListener('click', () => this.startCustom());
-        document.getElementById('customInput').addEventListener('keydown', e => {
+        const customStartBtn = this._safeGetElement('customStartBtn');
+        const customInput = this._safeGetElement('customInput');
+        if (customStartBtn) customStartBtn.addEventListener('click', () => this.startCustom());
+        if (customInput) customInput.addEventListener('keydown', e => {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.startCustom(); }
         });
 
         // 转盘操作
-        document.getElementById('spinBtn').addEventListener('click', () => this.spin());
-        document.getElementById('respinBtn').addEventListener('click', () => this.respin());
-        document.getElementById('newWheelBtn').addEventListener('click', () => this.showView('home'));
+        const spinBtn = this._safeGetElement('spinBtn');
+        const respinBtn = this._safeGetElement('respinBtn');
+        const newWheelBtn = this._safeGetElement('newWheelBtn');
+        if (spinBtn) spinBtn.addEventListener('click', () => this.spin());
+        if (respinBtn) respinBtn.addEventListener('click', () => this.respin());
+        if (newWheelBtn) newWheelBtn.addEventListener('click', () => this.showView('home'));
     },
 
+    // 2.2: 视图切换焦点管理
     showView(viewName) {
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         const target = document.getElementById(`view${viewName.charAt(0).toUpperCase() + viewName.slice(1)}`);
         if (target) {
             target.classList.add('active');
             this.state.currentView = viewName;
+            // 2.2: 焦点移到新视图标题
+            const heading = target.querySelector('h1, h2');
+            if (heading) {
+                heading.setAttribute('tabindex', '-1');
+                heading.focus({ preventScroll: true });
+            }
         }
     },
 
@@ -65,7 +87,7 @@ const WheelApp = {
         document.querySelectorAll('.cat-filter').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.cat === cat);
         });
-        
+
         document.querySelectorAll('.preset-btn').forEach(btn => {
             const preset = WHEEL_PRESETS[btn.dataset.preset];
             btn.style.display = (cat === 'all' || preset.category === cat) ? '' : 'none';
@@ -75,66 +97,79 @@ const WheelApp = {
     selectPreset(presetId) {
         const preset = WHEEL_PRESETS[presetId];
         if (!preset) return;
-        
+
         this.state.currentPreset = presetId;
         this.startWheel(preset.name, preset.icon, preset.options, preset.weights);
     },
 
     startWheel(name, icon, options, weights = null) {
-        document.getElementById('wheelTitle').textContent = `${icon} ${name}`;
-        
-        const canvas = document.getElementById('wheelCanvas');
+        const wheelTitle = this._safeGetElement('wheelTitle');
+        if (wheelTitle) wheelTitle.textContent = `${icon} ${name}`;
+
+        const canvas = this._safeGetElement('wheelCanvas');
+        if (!canvas) return;
         this.state.wheel = new WheelRenderer(canvas, options, weights);
         this.state.wheel.onResult = (result) => this.showResult(result, name);
-        
+
         // 重置结果区域
-        document.getElementById('resultArea').style.display = 'none';
-        document.getElementById('spinBtn').style.display = '';
-        
+        const resultArea = this._safeGetElement('resultArea');
+        const spinBtn = this._safeGetElement('spinBtn');
+        if (resultArea) resultArea.style.display = 'none';
+        if (spinBtn) { spinBtn.style.display = ''; spinBtn.disabled = false; }
+
         this.showView('wheel');
     },
 
     spin() {
         if (this.state.wheel && !this.state.wheel.isSpinning) {
-            document.getElementById('spinBtn').disabled = true;
+            const spinBtn = this._safeGetElement('spinBtn');
+            if (spinBtn) spinBtn.disabled = true;
             this.state.wheel.spin();
         }
     },
 
     respin() {
-        document.getElementById('resultArea').style.display = 'none';
-        document.getElementById('spinBtn').style.display = '';
-        document.getElementById('spinBtn').disabled = false;
-        this.state.wheel.rotation = 0;
-        this.state.wheel.draw();
+        const resultArea = this._safeGetElement('resultArea');
+        const spinBtn = this._safeGetElement('spinBtn');
+        if (resultArea) resultArea.style.display = 'none';
+        if (spinBtn) { spinBtn.style.display = ''; spinBtn.disabled = false; }
+        if (this.state.wheel) {
+            this.state.wheel.rotation = 0;
+            this.state.wheel.draw();
+        }
     },
 
     showResult(result, wheelName) {
-        document.getElementById('spinBtn').style.display = 'none';
-        document.getElementById('resultArea').style.display = '';
-        document.getElementById('resultOption').textContent = result.option;
-        document.getElementById('resultWheelName').textContent = wheelName;
-        
+        const spinBtn = this._safeGetElement('spinBtn');
+        const resultArea = this._safeGetElement('resultArea');
+        const resultOption = this._safeGetElement('resultOption');
+        const resultWheelName = this._safeGetElement('resultWheelName');
+
+        if (spinBtn) spinBtn.style.display = 'none';
+        if (resultArea) resultArea.style.display = '';
+        if (resultOption) resultOption.textContent = result.option;
+        if (resultWheelName) resultWheelName.textContent = wheelName;
+
         // 添加闪烁效果
         MoonEffects.createFlash('rgba(212,168,67,0.2)');
     },
 
     async aiGenerate() {
-        const input = document.getElementById('aiInput');
+        const input = this._safeGetElement('aiInput');
+        if (!input) return;
         const text = input.value.trim();
         if (!text) { MoonUtils.showToast('请输入描述'); return; }
         if (this.state.aiGenerating) return;
 
         this.state.aiGenerating = true;
-        const btn = document.getElementById('aiGenerateBtn');
-        btn.disabled = true;
-        btn.textContent = '生成中...';
+        const btn = this._safeGetElement('aiGenerateBtn');
+        if (btn) { btn.disabled = true; btn.textContent = '生成中...'; }
 
         try {
             if (!MoonConfig.get('apiKey')) {
                 throw new Error('请先配置 API Key');
             }
-            
+
             const result = await WheelAIGenerator.generateFromText(text);
             if (result.success) {
                 this.startWheel(result.data.name, result.data.icon, result.data.options);
@@ -145,8 +180,7 @@ const WheelApp = {
             MoonUtils.showToast(error.message);
         } finally {
             this.state.aiGenerating = false;
-            btn.disabled = false;
-            btn.textContent = '✨ AI生成';
+            if (btn) { btn.disabled = false; btn.textContent = '✨ AI生成'; }
         }
     },
 
@@ -159,7 +193,8 @@ const WheelApp = {
     },
 
     startCustom() {
-        const input = document.getElementById('customInput');
+        const input = this._safeGetElement('customInput');
+        if (!input) return;
         const text = input.value.trim();
         if (!text) { MoonUtils.showToast('请输入选项'); return; }
 

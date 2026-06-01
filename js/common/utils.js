@@ -4,6 +4,8 @@ const MoonUtils = {
     showToast(message, duration = 2000) {
         const toast = document.createElement('div');
         toast.className = 'toast';
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'polite');
         toast.textContent = message;
         document.body.appendChild(toast);
         setTimeout(() => toast.classList.add('show'), 10);
@@ -41,29 +43,35 @@ const MoonUtils = {
 
     stripThinking(text) {
         if (!text) return '';
-        let cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, '');
-        cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '');
-        return cleaned.replace(/^\s*\n/gm, '\n').trim();
+        return text.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/^\s*\n/gm, '\n').trim();
     },
 
+    // 当前活跃的打字动画控制器
+    _activeTyping: null,
+
     async typeText(element, text, speed = 30) {
+        // 取消上一次未完成的打字动画
+        if (this._activeTyping) {
+            this._activeTyping.cancel();
+        }
+
+        let cancelled = false;
+        let intervalId = null;
+        const controller = {
+            cancel() {
+                cancelled = true;
+                if (intervalId) { clearInterval(intervalId); intervalId = null; }
+            }
+        };
+        this._activeTyping = controller;
+
         element.innerHTML = '';
         const formatted = this.formatText(text);
-        
+
         // 解析HTML节点，逐字符输出保留格式
         const temp = document.createElement('div');
         temp.innerHTML = formatted;
-        
-        const walker = document.createTreeWalker(temp, NodeFilter.SHOW_TEXT, null, false);
-        const textNodes = [];
-        while (walker.nextNode()) textNodes.push(walker.currentNode);
-        
-        // 清空目标元素，复制HTML结构
-        element.innerHTML = formatted;
-        // 隐藏所有文本内容
-        const allText = element.querySelectorAll('*');
-        element.innerHTML = '';
-        
+
         // 重建结构，文本节点用span包裹用于逐字显示
         function cloneWithSpans(sourceNode, targetParent) {
             for (const child of sourceNode.childNodes) {
@@ -81,21 +89,26 @@ const MoonUtils = {
             }
         }
         cloneWithSpans(temp, element);
-        
+
         const charSpans = element.querySelectorAll('.typing-char');
         let charIndex = 0;
-        
+
         return new Promise(resolve => {
-            const interval = setInterval(() => {
+            intervalId = setInterval(() => {
+                if (cancelled) {
+                    clearInterval(intervalId);
+                    element.innerHTML = formatted;
+                    if (this._activeTyping === controller) this._activeTyping = null;
+                    resolve();
+                    return;
+                }
                 if (charIndex < charSpans.length) {
-                    const span = charSpans[charIndex];
-                    // 显示整个文本节点（一个span可能包含多个字符）
-                    span.style.visibility = 'visible';
+                    charSpans[charIndex].style.visibility = 'visible';
                     charIndex++;
                 } else {
-                    clearInterval(interval);
-                    // 清理：移除临时span，恢复原始HTML
+                    clearInterval(intervalId);
                     element.innerHTML = formatted;
+                    if (this._activeTyping === controller) this._activeTyping = null;
                     resolve();
                 }
             }, speed);

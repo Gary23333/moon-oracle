@@ -17,6 +17,9 @@ class WheelRenderer {
         ];
         
         this.resize();
+        // 3.2: 指针静态缓存（不随旋转变化）
+        this._pointerCanvas = null;
+        this._buildPointerCache();
         this.draw();
     }
 
@@ -27,6 +30,34 @@ class WheelRenderer {
         this.centerX = size / 2;
         this.centerY = size / 2;
         this.radius = size / 2 - 20;
+        this._buildPointerCache();
+    }
+
+    // 3.2: 将指针绘制到离屏 canvas，每帧直接 drawImage
+    _buildPointerCache() {
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        this._pointerCanvas = document.createElement('canvas');
+        this._pointerCanvas.width = w;
+        this._pointerCanvas.height = h;
+        const pCtx = this._pointerCanvas.getContext('2d');
+        const centerX = w / 2;
+        const pointerY = 15;
+
+        pCtx.beginPath();
+        pCtx.moveTo(centerX, pointerY);
+        pCtx.lineTo(centerX - 12, pointerY - 20);
+        pCtx.lineTo(centerX + 12, pointerY - 20);
+        pCtx.closePath();
+
+        const gradient = pCtx.createLinearGradient(centerX, pointerY - 20, centerX, pointerY);
+        gradient.addColorStop(0, '#ffd700');
+        gradient.addColorStop(1, '#b8860b');
+        pCtx.fillStyle = gradient;
+        pCtx.fill();
+        pCtx.strokeStyle = '#ffd700';
+        pCtx.lineWidth = 1;
+        pCtx.stroke();
     }
 
     draw() {
@@ -96,23 +127,10 @@ class WheelRenderer {
     }
 
     drawPointer() {
-        const { ctx, centerX } = this;
-        const pointerY = 15;
-        
-        ctx.beginPath();
-        ctx.moveTo(centerX, pointerY);
-        ctx.lineTo(centerX - 12, pointerY - 20);
-        ctx.lineTo(centerX + 12, pointerY - 20);
-        ctx.closePath();
-        
-        const gradient = ctx.createLinearGradient(centerX, pointerY - 20, centerX, pointerY);
-        gradient.addColorStop(0, '#ffd700');
-        gradient.addColorStop(1, '#b8860b');
-        ctx.fillStyle = gradient;
-        ctx.fill();
-        ctx.strokeStyle = '#ffd700';
-        ctx.lineWidth = 1;
-        ctx.stroke();
+        // 3.2: 从缓存绘制指针，避免每帧重绘
+        if (this._pointerCanvas) {
+            this.ctx.drawImage(this._pointerCanvas, 0, 0);
+        }
     }
 
     spin() {
