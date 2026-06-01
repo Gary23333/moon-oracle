@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>塔罗占卜 · 月影决策屋</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔮</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Noto+Serif+SC:wght@200;300;400;500;600;700;900&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/tarot.css">
+</head>
+<body>
+    <noscript><div style="text-align:center;padding:4rem;color:#d4a843;font-family:serif;"><h2>🔮 月影决策屋</h2><p>需要JavaScript才能运行</p></div></noscript>
+    <div class="stars-container" id="starsContainer"></div>
+    <div class="moon"></div>
+
+    <a href="index.html" class="back-home">← 返回首页</a>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-cards">
+                <div class="loading-card"></div>
+                <div class="loading-card"></div>
+                <div class="loading-card"></div>
+            </div>
+            <div class="loading-text">月影正在为你占卜...</div>
+        </div>
+    </div>
+
+    <div class="tarot-container">
+        <!-- 视图1: 欢迎/提问页 -->
+        <section class="view view-welcome active" id="viewWelcome">
+            <div style="text-align:center;margin-bottom:var(--space-2xl);">
+                <h1 style="font-family:var(--font-display);color:var(--color-gold);font-size:2rem;">🔮 塔罗占卜</h1>
+                <p style="color:var(--color-text-muted);margin-top:var(--space-sm);">78张命运之牌，为你揭示命运的密码</p>
+            </div>
+
+            <div style="text-align:center;margin-bottom:var(--space-lg);">
+                <h2 style="color:var(--color-text);font-size:1.2rem;">✦ 在你提问之前，告诉我你关注的领域 ✦</h2>
+            </div>
+
+            <div class="category-grid">
+                <button class="category-btn" data-category="love"><span class="icon">💕</span><span class="name">情感姻缘</span></button>
+                <button class="category-btn" data-category="career"><span class="icon">💼</span><span class="name">事业前程</span></button>
+                <button class="category-btn" data-category="wealth"><span class="icon">💰</span><span class="name">财运理财</span></button>
+                <button class="category-btn" data-category="study"><span class="icon">📚</span><span class="name">学业考试</span></button>
+                <button class="category-btn" data-category="health"><span class="icon">🏥</span><span class="name">健康身心</span></button>
+                <button class="category-btn" data-category="decision"><span class="icon">🧭</span><span class="name">人生抉择</span></button>
+                <button class="category-btn" data-category="daily"><span class="icon">✨</span><span class="name">每日指引</span></button>
+                <button class="category-btn" data-category="custom"><span class="icon">✏️</span><span class="name">其他问题</span></button>
+            </div>
+
+            <div class="question-area">
+                <textarea id="userQuestion" placeholder="请先选择分类，然后描述你的问题..." rows="3"></textarea>
+                <button class="ask-btn" id="askBtn">开始占卜 ✦</button>
+            </div>
+        </section>
+
+        <!-- 视图2: 牌阵选择页 -->
+        <section class="view" id="viewSpread">
+            <div style="text-align:center;margin-bottom:var(--space-xl);">
+                <h2 style="font-family:var(--font-display);color:var(--color-gold);font-size:1.5rem;">✦ 选择你的牌阵 ✦</h2>
+            </div>
+            <div class="spread-recommend" id="spreadRecommend"></div>
+            <div class="spread-options">
+                <div class="spread-card" data-spread="single">
+                    <div class="recommend-badge">推荐</div>
+                    <div class="spread-icon">🔮</div>
+                    <div class="spread-name">单牌占卜</div>
+                    <div class="spread-count">1张牌</div>
+                    <div class="spread-desc">最直接的核心答案</div>
+                </div>
+                <div class="spread-card" data-spread="three_card">
+                    <div class="recommend-badge">推荐</div>
+                    <div class="spread-icon">🌙✨☀️</div>
+                    <div class="spread-name">三牌占卜</div>
+                    <div class="spread-count">3张牌</div>
+                    <div class="spread-desc">过去·现在·未来</div>
+                </div>
+                <div class="spread-card" data-spread="love_cross">
+                    <div class="recommend-badge">推荐</div>
+                    <div class="spread-icon">💕</div>
+                    <div class="spread-name">爱情十字</div>
+                    <div class="spread-count">5张牌</div>
+                    <div class="spread-desc">专为感情问题设计</div>
+                </div>
+                <div class="spread-card" data-spread="career_pyramid">
+                    <div class="recommend-badge">推荐</div>
+                    <div class="spread-icon">💼</div>
+                    <div class="spread-name">事业金字塔</div>
+                    <div class="spread-count">5张牌</div>
+                    <div class="spread-desc">清晰展示发展方向</div>
+                </div>
+                <div class="spread-card" data-spread="choice">
+                    <div class="recommend-badge">推荐</div>
+                    <div class="spread-icon">⚖️</div>
+                    <div class="spread-name">二选一</div>
+                    <div class="spread-count">5张牌</div>
+                    <div class="spread-desc">帮助你做出决定</div>
+                </div>
+                <div class="spread-card" data-spread="celtic">
+                    <div class="recommend-badge">推荐</div>
+                    <div class="spread-icon">✦</div>
+                    <div class="spread-name">凯尔特十字</div>
+                    <div class="spread-count">10张牌</div>
+                    <div class="spread-desc">全方位深度解读</div>
+                </div>
+                <div class="spread-card" data-spread="seasonal">
+                    <div class="recommend-badge">推荐</div>
+                    <div class="spread-icon">🌸🌻🍂❄️</div>
+                    <div class="spread-name">四季牌阵</div>
+                    <div class="spread-count">4张牌</div>
+                    <div class="spread-desc">未来一年运势</div>
+                </div>
+                <div class="spread-card" data-spread="tree_of_life">
+                    <div class="recommend-badge">推荐</div>
+                    <div class="spread-icon">🌳</div>
+                    <div class="spread-name">生命之树</div>
+                    <div class="spread-count">10张牌</div>
+                    <div class="spread-desc">探索人生深层意义</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 视图3: 选牌页 -->
+        <section class="view" id="viewSelect">
+            <div class="select-header">
+                <h2 style="font-family:var(--font-display);color:var(--color-gold);font-size:1.5rem;">✦ 选择你的命运之牌 ✦</h2>
+                <p style="color:var(--color-text-muted);margin-top:var(--space-sm);" id="selectDesc">凭直觉选择...</p>
+                <div class="selected-count" id="selectedCount">已选择: 0 / 1</div>
+            </div>
+            <div class="cards-grid" id="cardsGrid"></div>
+            <div class="select-footer">
+                <button class="back-btn" id="backToSpread">返回</button>
+                <button class="confirm-btn" id="confirmCards" disabled>确认选择</button>
+            </div>
+        </section>
+
+        <!-- 视图4: 细节追问页 -->
+        <section class="view" id="viewDetail">
+            <div style="text-align:center;margin-bottom:var(--space-xl);">
+                <h2 style="font-family:var(--font-display);color:var(--color-gold);font-size:1.5rem;">🌙 在翻开命运之牌前，告诉我更多...</h2>
+            </div>
+            <div id="detailQuestions"></div>
+            <div style="text-align:center;margin-top:var(--space-xl);">
+                <button class="ask-btn" id="submitDetails">✨ 揭示命运</button>
+            </div>
+        </section>
+
+        <!-- 视图5: 结果页 -->
+        <section class="view" id="viewResult">
+            <div style="text-align:center;margin-bottom:var(--space-xl);">
+                <h2 style="font-family:var(--font-display);color:var(--color-gold);font-size:1.5rem;">✦ 命运的启示 ✦</h2>
+            </div>
+            <div class="result-cards" id="resultCards"></div>
+            <div class="result-text" id="resultText"></div>
+            <div class="followup-section">
+                <div class="followup-history" id="followupHistory"></div>
+                <div class="followup-input-area">
+                    <input type="text" id="followupInput" placeholder="对这次占卜有什么疑问？">
+                    <button class="followup-btn" id="followupBtn">追问</button>
+                </div>
+            </div>
+            <div class="result-actions">
+                <button class="restart-btn" id="restartBtn">🔮 重新占卜</button>
+            </div>
+        </section>
+    </div>
+
+    <script src="js/common/config.js"></script>
+    <script src="js/common/api.js"></script>
+    <script src="js/common/utils.js"></script>
+    <script src="js/common/effects.js"></script>
+    <script src="js/tarot/cards-data.js"></script>
+    <script src="js/tarot/spreads.js"></script>
+    <script src="js/tarot/classifier.js"></script>
+    <script src="js/tarot/prompts.js"></script>
+    <script src="js/tarot/app.js"></script>
+</body>
+</html>

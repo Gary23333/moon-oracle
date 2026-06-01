@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="月影决策屋 - 塔罗占卜与命运转盘，让命运指引你的方向">
+    <meta name="theme-color" content="#0a0612">
+    <title>月影决策屋 · 命运指引之门</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔮</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Noto+Serif+SC:wght@200;300;400;500;600;700;900&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/base.css">
+    <style>
+        .home-container {
+            position: relative; z-index: 10;
+            max-width: 1000px; margin: 0 auto;
+            padding: var(--space-2xl) var(--space-xl);
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        .home-header {
+            text-align: center; margin-bottom: var(--space-3xl);
+            animation: fadeInDown 1s ease-out;
+        }
+        .home-header .ornament {
+            color: var(--color-gold); font-size: 1.5rem;
+            animation: rotateStar 6s linear infinite;
+        }
+        @keyframes rotateStar { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .home-title {
+            font-family: var(--font-display); margin: var(--space-md) 0;
+        }
+        .home-title .title-main {
+            font-size: 3rem;
+            background: linear-gradient(135deg, var(--color-gold-light) 0%, var(--color-gold) 50%, var(--color-gold-dark) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text; background-size: 200% 200%;
+            animation: gradientText 5s ease infinite; letter-spacing: 0.15em;
+        }
+        @keyframes gradientText { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        .home-title .title-sub {
+            display: block; font-size: 1.1rem; color: var(--color-starlight);
+            letter-spacing: 0.3em; margin-top: var(--space-sm);
+        }
+        .home-subtitle {
+            color: var(--color-text-muted); font-size: 1rem;
+            margin-top: var(--space-md); font-style: italic;
+        }
+        .entry-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: var(--space-2xl); width: 100%; max-width: 800px;
+            animation: fadeInUp 1s ease-out;
+        }
+        @keyframes fadeInUp { from { opacity:0; transform:translateY(40px); } to { opacity:1; transform:translateY(0); } }
+        .entry-card {
+            position: relative; padding: var(--space-2xl);
+            background: linear-gradient(135deg, var(--color-bg-dark) 0%, var(--color-bg-medium) 100%);
+            border: 2px solid var(--color-purple-dark); border-radius: var(--radius-xl);
+            cursor: pointer; transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
+            overflow: hidden; text-decoration: none; color: inherit;
+            display: flex; flex-direction: column; align-items: center;
+            text-align: center; gap: var(--space-md);
+        }
+        .entry-card::before {
+            content: ''; position: absolute; inset: 0;
+            background: radial-gradient(circle at 50% 50%, rgba(212,168,67,0.15) 0%, transparent 50%);
+            opacity: 0; transition: opacity 0.3s ease; pointer-events: none;
+        }
+        .entry-card:hover::before { opacity: 1; }
+        .entry-card:hover {
+            border-color: var(--color-gold);
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 12px 40px rgba(212,168,67,0.2), 0 0 60px rgba(139,92,246,0.1);
+        }
+        .entry-card:active { transform: translateY(-4px) scale(1); }
+        .entry-icon { font-size: 4rem; filter: drop-shadow(0 0 20px rgba(212,168,67,0.4)); }
+        .entry-title {
+            font-family: var(--font-display); font-size: 1.5rem;
+            color: var(--color-gold); letter-spacing: 0.1em;
+        }
+        .entry-desc {
+            color: var(--color-text-muted); font-size: 0.95rem; line-height: 1.6;
+        }
+        .entry-features {
+            display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-sm);
+            margin-top: var(--space-sm);
+        }
+        .entry-feature {
+            padding: var(--space-xs) var(--space-sm);
+            background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3);
+            border-radius: var(--radius-full); font-size: 0.8rem; color: var(--color-starlight);
+        }
+        .home-footer {
+            margin-top: var(--space-3xl); text-align: center;
+            color: var(--color-text-muted); font-size: 0.85rem;
+            animation: fadeIn 1.5s ease-out;
+        }
+        @media (max-width: 768px) {
+            .entry-grid { grid-template-columns: 1fr; gap: var(--space-lg); }
+            .home-title .title-main { font-size: 2rem; }
+            .entry-card { padding: var(--space-xl); }
+        }
+    </style>
+</head>
+<body>
+    <noscript>
+        <div style="text-align:center;padding:4rem;color:#d4a843;font-family:serif;">
+            <h2>🔮 月影决策屋</h2>
+            <p style="margin-top:1rem;">需要JavaScript才能运行，请启用JavaScript后刷新页面。</p>
+        </div>
+    </noscript>
+    <div class="stars-container" id="starsContainer"></div>
+    <div class="moon"></div>
+
+    <div class="config-toggle" id="configToggle" title="系统配置">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+        </svg>
+    </div>
+
+    <div class="config-panel" id="configPanel">
+        <h3>⚙️ 月影决策屋配置</h3>
+        <div class="config-section">
+            <div class="config-section-title">LLM 配置</div>
+            <div class="config-field">
+                <label>API 地址</label>
+                <input type="text" id="cfgApiUrl" placeholder="https://api.deepseek.com">
+            </div>
+            <div class="config-field">
+                <label>API Key</label>
+                <input type="password" id="cfgApiKey" placeholder="sk-...">
+            </div>
+            <div class="config-field">
+                <label>模型名称</label>
+                <input type="text" id="cfgModel" placeholder="deepseek-v4-flash">
+            </div>
+        </div>
+        <div class="config-section">
+            <div class="config-section-title">思考模式</div>
+            <div class="config-field">
+                <div class="toggle-row">
+                    <label>启用思考模式</label>
+                    <div class="toggle-switch" id="cfgThinkingToggle" role="switch" aria-checked="false" tabindex="0"></div>
+                </div>
+            </div>
+            <div class="config-field">
+                <label>思考强度</label>
+                <select id="cfgThinkingEffort">
+                    <option value="high">high - 标准</option>
+                    <option value="max">max - 最强</option>
+                </select>
+            </div>
+            <div class="config-field">
+                <div class="toggle-row">
+                    <label>显示思考过程</label>
+                    <div class="toggle-switch" id="cfgShowThinkingToggle" role="switch" aria-checked="false" tabindex="0"></div>
+                </div>
+            </div>
+        </div>
+        <div class="config-section">
+            <div class="config-section-title">系统提示词</div>
+            <div class="config-field">
+                <label>塔罗问候提示词</label>
+                <textarea id="cfgPromptGreeting" rows="3"></textarea>
+            </div>
+            <div class="config-field">
+                <label>塔罗解读提示词</label>
+                <textarea id="cfgPromptReading" rows="4"></textarea>
+            </div>
+            <div class="config-field">
+                <label>转盘生成提示词</label>
+                <textarea id="cfgPromptWheel" rows="3"></textarea>
+            </div>
+        </div>
+        <div class="config-section">
+            <div class="config-section-title">功能开关</div>
+            <div class="config-field">
+                <div class="toggle-row">
+                    <label>转盘结果AI解读</label>
+                    <div class="toggle-switch" id="cfgWheelAIToggle" role="switch" aria-checked="false" tabindex="0"></div>
+                </div>
+            </div>
+            <div class="config-field">
+                <div class="toggle-row">
+                    <label>音效</label>
+                    <div class="toggle-switch" id="cfgSoundToggle" role="switch" aria-checked="false" tabindex="0"></div>
+                </div>
+            </div>
+        </div>
+        <button class="config-btn" id="configSave">保存配置</button>
+        <button class="config-btn config-btn-secondary" id="configReset">重置默认</button>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-cards">
+                <div class="loading-card"></div>
+                <div class="loading-card"></div>
+                <div class="loading-card"></div>
+            </div>
+            <div class="loading-text">月影正在为你准备...</div>
+        </div>
+    </div>
+
+    <div class="home-container">
+        <header class="home-header">
+            <div class="ornament">✦</div>
+            <h1 class="home-title">
+                <span class="title-main">月影决策屋</span>
+                <span class="title-sub">命运指引之门</span>
+            </h1>
+            <div class="ornament">✦</div>
+            <p class="home-subtitle">在星辰与烛火之间，让命运为你指引方向</p>
+        </header>
+
+        <div class="entry-grid">
+            <a href="tarot.html" class="entry-card">
+                <div class="entry-icon">🔮</div>
+                <h2 class="entry-title">塔罗占卜</h2>
+                <p class="entry-desc">78张命运之牌，为你揭示过去、现在与未来的秘密</p>
+                <div class="entry-features">
+                    <span class="entry-feature">78张完整牌组</span>
+                    <span class="entry-feature">8种牌阵</span>
+                    <span class="entry-feature">AI深度解读</span>
+                    <span class="entry-feature">追问细节</span>
+                </div>
+            </a>
+
+            <a href="wheel.html" class="entry-card">
+                <div class="entry-icon">🎡</div>
+                <h2 class="entry-title">命运转盘</h2>
+                <p class="entry-desc">一切皆可转，让命运的齿轮为你做出选择</p>
+                <div class="entry-features">
+                    <span class="entry-feature">预设转盘</span>
+                    <span class="entry-feature">自定义选项</span>
+                    <span class="entry-feature">AI智能生成</span>
+                    <span class="entry-feature">双转盘联动</span>
+                </div>
+            </a>
+        </div>
+
+        <footer class="home-footer">
+            <p>✦ 月影决策屋 · 让命运为你指引方向 ✦</p>
+        </footer>
+    </div>
+
+    <script src="js/common/config.js"></script>
+    <script src="js/common/api.js"></script>
+    <script src="js/common/utils.js"></script>
+    <script src="js/common/effects.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            MoonConfig.init();
+            MoonEffects.init();
+            MoonEffects.createStars('starsContainer');
+
+            const configToggle = document.getElementById('configToggle');
+            const configPanel = document.getElementById('configPanel');
+            const configSave = document.getElementById('configSave');
+            const configReset = document.getElementById('configReset');
+
+            configToggle.addEventListener('click', () => configPanel.classList.toggle('active'));
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape') configPanel.classList.remove('active');
+            });
+
+            function loadConfigUI() {
+                const c = MoonConfig.current;
+                document.getElementById('cfgApiUrl').value = c.apiUrl || '';
+                document.getElementById('cfgApiKey').value = c.apiKey || '';
+                document.getElementById('cfgModel').value = c.model || '';
+                document.getElementById('cfgThinkingToggle').classList.toggle('active', c.thinkingEnabled);
+                document.getElementById('cfgThinkingEffort').value = c.thinkingEffort || 'high';
+                document.getElementById('cfgShowThinkingToggle').classList.toggle('active', c.showThinking);
+                document.getElementById('cfgWheelAIToggle').classList.toggle('active', c.wheelResultAI);
+                document.getElementById('cfgSoundToggle').classList.toggle('active', c.soundEnabled);
+                document.getElementById('cfgPromptGreeting').value = c.tarotPrompts?.greeting || '';
+                document.getElementById('cfgPromptReading').value = c.tarotPrompts?.reading || '';
+                document.getElementById('cfgPromptWheel').value = c.wheelPrompts?.generate || '';
+            }
+
+            function setupToggle(id, key) {
+                const el = document.getElementById(id);
+                el.addEventListener('click', () => {
+                    el.classList.toggle('active');
+                    const isActive = el.classList.contains('active');
+                    el.setAttribute('aria-checked', isActive);
+                    MoonConfig.set(key, isActive);
+                });
+                el.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        el.click();
+                    }
+                });
+            }
+
+            setupToggle('cfgThinkingToggle', 'thinkingEnabled');
+            setupToggle('cfgShowThinkingToggle', 'showThinking');
+            setupToggle('cfgWheelAIToggle', 'wheelResultAI');
+            setupToggle('cfgSoundToggle', 'soundEnabled');
+
+            configSave.addEventListener('click', () => {
+                MoonConfig.set('apiUrl', document.getElementById('cfgApiUrl').value);
+                MoonConfig.set('apiKey', document.getElementById('cfgApiKey').value);
+                MoonConfig.set('model', document.getElementById('cfgModel').value);
+                MoonConfig.set('thinkingEffort', document.getElementById('cfgThinkingEffort').value);
+                MoonConfig.current.tarotPrompts = {
+                    ...MoonConfig.current.tarotPrompts,
+                    greeting: document.getElementById('cfgPromptGreeting').value,
+                    reading: document.getElementById('cfgPromptReading').value
+                };
+                MoonConfig.current.wheelPrompts = {
+                    ...MoonConfig.current.wheelPrompts,
+                    generate: document.getElementById('cfgPromptWheel').value
+                };
+                MoonConfig.save();
+                configPanel.classList.remove('active');
+                MoonUtils.showToast('配置已保存');
+            });
+
+            configReset.addEventListener('click', () => {
+                MoonConfig.reset();
+                loadConfigUI();
+                MoonUtils.showToast('配置已重置');
+            });
+
+            loadConfigUI();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,259 @@
+/* 月影决策屋 - 塔罗占卜样式 */
+
+.tarot-container {
+    position: relative; z-index: 10;
+    max-width: 1000px; margin: 0 auto;
+    padding: var(--space-2xl) var(--space-xl);
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+}
+
+/* 返回首页 */
+.back-home {
+    position: fixed; top: var(--space-lg); left: var(--space-lg);
+    display: flex; align-items: center; gap: var(--space-sm);
+    color: var(--color-text-muted); text-decoration: none;
+    font-size: 0.9rem; z-index: 100; transition: color 0.3s;
+}
+.back-home:hover { color: var(--color-gold); }
+
+/* 视图系统 */
+.view { display: none; animation: fadeIn 0.5s ease-out; }
+.view.active { display: flex; flex-direction: column; flex: 1; }
+
+/* 分类选择器 */
+.category-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-md); margin: var(--space-xl) 0;
+}
+.category-btn {
+    display: flex; flex-direction: column; align-items: center;
+    gap: var(--space-sm); padding: var(--space-lg);
+    background: var(--color-bg-card); border: 2px solid var(--color-purple-dark);
+    border-radius: var(--radius-lg); cursor: pointer; transition: all 0.3s;
+    color: var(--color-text);
+}
+.category-btn:hover { border-color: var(--color-purple-light); transform: translateY(-2px); }
+.category-btn.selected { 
+    border-color: var(--color-gold); box-shadow: var(--shadow-gold-glow);
+    background: rgba(212,168,67,0.1);
+}
+.category-btn .icon { font-size: 2rem; }
+.category-btn .name { font-size: 0.9rem; color: var(--color-text-muted); }
+.category-btn.selected .name { color: var(--color-gold); }
+
+/* 问题输入 */
+.question-area {
+    display: flex; flex-direction: column; gap: var(--space-md);
+    margin-top: var(--space-xl);
+}
+#userQuestion {
+    width: 100%; padding: var(--space-md) var(--space-lg);
+    background: var(--color-bg-card); border: 1px solid var(--color-purple-dark);
+    border-radius: var(--radius-lg); color: var(--color-text);
+    font-size: 1rem; font-family: var(--font-body); resize: none;
+    transition: border-color 0.3s;
+}
+#userQuestion:focus { outline: none; border-color: var(--color-purple-glow); }
+.ask-btn {
+    align-self: flex-end; padding: var(--space-md) var(--space-2xl);
+    background: linear-gradient(135deg, var(--color-gold-dark), var(--color-gold));
+    border: none; border-radius: var(--radius-full); color: var(--color-bg-deep);
+    font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s;
+}
+.ask-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-gold-glow); }
+
+/* 牌阵选择 */
+.spread-recommend {
+    text-align: center; color: var(--color-accent-teal); font-size: 0.9rem;
+    margin-bottom: var(--space-lg); font-style: italic;
+}
+.spread-options { display: flex; gap: var(--space-lg); justify-content: center; flex-wrap: wrap; }
+.spread-card {
+    position: relative; flex: 1; min-width: 200px; max-width: 280px;
+    padding: var(--space-xl); background: var(--color-bg-card);
+    border: 2px solid var(--color-purple-dark); border-radius: var(--radius-xl);
+    cursor: pointer; transition: all 0.3s; text-align: center;
+}
+.spread-card:hover { border-color: var(--color-gold); transform: translateY(-4px); box-shadow: var(--shadow-gold-glow); }
+.spread-card.recommended { border-color: var(--color-accent-teal); }
+.recommend-badge {
+    display: none; position: absolute; top: -8px; right: -8px;
+    padding: 2px 8px; background: var(--color-accent-teal);
+    border-radius: var(--radius-full); font-size: 0.7rem; color: var(--color-bg-deep);
+}
+.spread-icon { font-size: 2rem; margin-bottom: var(--space-sm); }
+.spread-name { font-family: var(--font-display); color: var(--color-gold); font-size: 1.2rem; }
+.spread-count { color: var(--color-accent-teal); font-size: 0.85rem; margin: var(--space-xs) 0; }
+.spread-desc { color: var(--color-text-muted); font-size: 0.85rem; }
+
+/* 选牌页 */
+.select-header { text-align: center; margin-bottom: var(--space-xl); }
+.selected-count { color: var(--color-starlight); font-size: 1.1rem; margin-top: var(--space-sm); }
+.cards-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: var(--space-sm); margin-bottom: var(--space-xl);
+}
+.tarot-card {
+    aspect-ratio: 2/3; cursor: pointer; animation: fadeIn 0.5s ease-out backwards;
+    transition: filter 0.2s;
+}
+.tarot-card:hover { filter: drop-shadow(0 0 10px rgba(139,92,246,0.4)); }
+.tarot-card-inner { position: relative; width: 100%; height: 100%; }
+.tarot-card-back {
+    position: absolute; width: 100%; height: 100%;
+    background: linear-gradient(135deg, #0d0520, #1a0a35, #2d1555, #1a0a35, #0d0520);
+    border: 2px solid var(--color-purple-dark); border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+}
+.card-back-pattern {
+    position: absolute; inset: 4px; border: 1px solid var(--color-gold-dark);
+    border-radius: var(--radius-sm); opacity: 0.3;
+}
+.tarot-card-back-symbol { font-size: 1.5rem; color: var(--color-gold); }
+.card-number { font-size: 0.7rem; color: var(--color-text-muted); margin-top: 2px; }
+.tarot-card.selected .tarot-card-back {
+    border-color: var(--color-gold); box-shadow: 0 0 15px rgba(212,168,67,0.4);
+}
+
+/* 选牌底部按钮 */
+.select-footer {
+    display: flex; justify-content: center; gap: var(--space-lg);
+    padding-top: var(--space-lg); border-top: 1px solid var(--color-purple-dark);
+}
+.back-btn, .confirm-btn {
+    padding: var(--space-md) var(--space-2xl); border: none;
+    border-radius: var(--radius-full); font-size: 1rem;
+    font-family: var(--font-body); cursor: pointer; transition: all 0.3s;
+}
+.back-btn { background: transparent; border: 1px solid var(--color-purple-dark); color: var(--color-text-muted); }
+.back-btn:hover { border-color: var(--color-purple-light); color: var(--color-text); }
+.confirm-btn {
+    background: linear-gradient(135deg, var(--color-gold-dark), var(--color-gold));
+    color: var(--color-bg-deep); font-weight: 600;
+}
+.confirm-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: var(--shadow-gold-glow); }
+.confirm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* 细节追问页 */
+.detail-intro { color: var(--color-text-muted); font-style: italic; margin-bottom: var(--space-lg); }
+.detail-question { margin-bottom: var(--space-md); }
+.detail-question label { display: block; color: var(--color-text-muted); margin-bottom: var(--space-xs); font-size: 0.9rem; }
+.detail-input {
+    width: 100%; padding: var(--space-sm) var(--space-md);
+    background: var(--color-bg-dark); border: 1px solid var(--color-purple-dark);
+    border-radius: var(--radius-md); color: var(--color-text);
+    font-family: var(--font-body); font-size: 0.9rem;
+}
+.detail-input:focus { outline: none; border-color: var(--color-purple-glow); }
+textarea.detail-input { resize: vertical; min-height: 60px; }
+
+/* 结果页 */
+.result-cards {
+    display: flex; justify-content: center; gap: var(--space-xl);
+    margin-bottom: var(--space-2xl); flex-wrap: wrap;
+}
+.result-card { width: 160px; height: 240px; perspective: 1000px; opacity: 0; animation: fadeIn 0.5s ease-out forwards; }
+.result-card-inner {
+    position: relative; width: 100%; aspect-ratio: 2/3;
+    transition: transform 1s cubic-bezier(0.4,0,0.2,1); transform-style: preserve-3d;
+}
+.result-card.revealed .result-card-inner { transform: rotateY(180deg); }
+.result-card-front, .result-card-back {
+    position: absolute; width: 100%; height: 100%;
+    backface-visibility: hidden; border-radius: var(--radius-lg); overflow: hidden;
+}
+.result-card-back {
+    background: linear-gradient(135deg, #0d0520, #1a0a35, #2d1555, #1a0a35, #0d0520);
+    border: 2px solid var(--color-purple-dark); display: flex; align-items: center; justify-content: center;
+}
+.result-card-back .card-back-pattern { position: absolute; inset: 6px; border: 1px solid var(--color-gold-dark); border-radius: var(--radius-sm); opacity: 0.3; }
+.result-card-back .tarot-card-back-symbol { font-size: 2rem; }
+.result-card-front {
+    transform: rotateY(180deg);
+    background: linear-gradient(180deg, rgba(26,5,37,0.96), rgba(45,27,78,0.96));
+    border: 2px solid var(--color-gold); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; padding: 6px;
+    box-shadow: var(--shadow-gold-glow);
+}
+.result-card-frame {
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    width: 100%; height: 100%; border: 1px solid rgba(212,168,67,0.3);
+    border-radius: var(--radius-sm); padding: 5px; gap: 4px;
+}
+.result-card-image-wrap {
+    width: 100%; flex: 1; min-height: 0; border-radius: 4px; overflow: hidden;
+    background: linear-gradient(180deg, #efe1b5, #c9a86b);
+}
+.result-card-image { display: block; width: 100%; height: 100%; object-fit: contain; }
+.result-card-image.reversed { transform: rotate(180deg); }
+.result-card-meta { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; }
+.card-position { font-size: 0.65rem; color: var(--color-starlight); }
+.card-name { font-size: 0.9rem; color: var(--color-gold-light); font-weight: 600; }
+.card-orientation { font-size: 0.7rem; color: var(--color-accent-teal); padding: 1px 6px; background: rgba(45,212,191,0.1); border-radius: var(--radius-full); }
+.card-orientation.reversed { color: #ef4444; background: rgba(239,68,68,0.1); }
+
+/* 解读文本 */
+.result-text {
+    background: var(--color-bg-card); border: 1px solid var(--color-purple-dark);
+    border-radius: var(--radius-lg); padding: var(--space-xl);
+    line-height: 2; font-size: 0.95rem; white-space: pre-wrap;
+    margin-bottom: var(--space-xl);
+}
+.result-text strong { color: var(--color-gold); }
+.result-text em { color: var(--color-starlight); }
+.thinking-box {
+    background: rgba(139,92,246,0.1); border: 1px solid var(--color-purple-dark);
+    border-radius: var(--radius-md); padding: var(--space-md);
+    margin-bottom: var(--space-md); font-size: 0.85rem; color: var(--color-text-muted);
+}
+
+/* 追问区域 */
+.followup-section {
+    background: var(--color-bg-card); border: 1px solid var(--color-purple-dark);
+    border-radius: var(--radius-lg); padding: var(--space-lg); margin-bottom: var(--space-xl);
+}
+.followup-history { max-height: 400px; overflow-y: auto; margin-bottom: var(--space-md); }
+.followup-message { margin-bottom: var(--space-md); padding: var(--space-md) var(--space-lg); border-radius: var(--radius-lg); line-height: 1.8; font-size: 0.9rem; animation: fadeIn 0.3s; }
+.followup-message.user {
+    background: linear-gradient(135deg, var(--color-purple-dark), var(--color-purple-medium));
+    border: 1px solid var(--color-purple-light); margin-left: var(--space-xl);
+    border-bottom-right-radius: var(--radius-sm);
+}
+.followup-message.assistant {
+    background: linear-gradient(135deg, var(--color-bg-dark), var(--color-bg-medium));
+    border: 1px solid var(--color-purple-dark); margin-right: var(--space-xl);
+    border-bottom-left-radius: var(--radius-sm);
+}
+.followup-input-area { display: flex; gap: var(--space-md); }
+#followupInput {
+    flex: 1; padding: var(--space-md) var(--space-lg);
+    background: var(--color-bg-dark); border: 1px solid var(--color-purple-dark);
+    border-radius: var(--radius-full); color: var(--color-text);
+    font-family: var(--font-body); font-size: 0.95rem;
+}
+#followupInput:focus { outline: none; border-color: var(--color-purple-glow); }
+.followup-btn {
+    padding: var(--space-md) var(--space-xl);
+    background: linear-gradient(135deg, var(--color-purple-dark), var(--color-purple-medium));
+    border: 1px solid var(--color-purple-light); border-radius: var(--radius-full);
+    color: var(--color-text); cursor: pointer; transition: all 0.3s;
+}
+.followup-btn:hover { box-shadow: var(--shadow-glow); }
+.result-actions { display: flex; justify-content: center; gap: var(--space-lg); }
+.restart-btn {
+    padding: var(--space-md) var(--space-2xl);
+    background: linear-gradient(135deg, var(--color-purple-dark), var(--color-purple-medium));
+    border: 1px solid var(--color-purple-light); border-radius: var(--radius-full);
+    color: var(--color-text); cursor: pointer; transition: all 0.3s;
+}
+.restart-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-glow); }
+
+/* 响应式 */
+@media (max-width: 768px) {
+    .category-grid { grid-template-columns: repeat(2, 1fr); }
+    .cards-grid { grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); }
+    .result-card { width: 120px; height: 180px; }
+    .spread-options { flex-direction: column; align-items: center; }
+    .spread-card { max-width: 100%; }
+}

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>命运转盘 · 月影决策屋</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎡</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Noto+Serif+SC:wght@200;300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/wheel.css">
+</head>
+<body>
+    <noscript><div style="text-align:center;padding:4rem;color:#d4a843;font-family:serif;"><h2>🎡 月影决策屋</h2><p>需要JavaScript才能运行</p></div></noscript>
+    <div class="stars-container" id="starsContainer"></div>
+    <div class="moon"></div>
+
+    <a href="index.html" class="back-home" style="position:fixed;top:var(--space-lg);left:var(--space-lg);color:var(--color-text-muted);text-decoration:none;z-index:100;">← 返回首页</a>
+
+    <div class="wheel-container">
+        <!-- 视图1: 首页 -->
+        <section class="view active" id="viewHome">
+            <div class="wheel-home-title">
+                <h1>🎡 命运转盘</h1>
+                <p>一切皆可转，让命运的齿轮为你做出选择</p>
+            </div>
+
+            <!-- 预设转盘 -->
+            <div class="presets-section">
+                <h2>✦ 预设转盘 ✦</h2>
+                <div class="cat-filters">
+                    <button class="cat-filter active" data-cat="all">🎡 全部</button>
+                    <button class="cat-filter" data-cat="food">🍜 吃什么</button>
+                    <button class="cat-filter" data-cat="love">💕 感情</button>
+                    <button class="cat-filter" data-cat="decision">✅ 决策</button>
+                    <button class="cat-filter" data-cat="entertainment">🎬 娱乐</button>
+                    <button class="cat-filter" data-cat="life">🌈 生活</button>
+                    <button class="cat-filter" data-cat="health">🏃 健康</button>
+                    <button class="cat-filter" data-cat="study">📚 学习</button>
+                </div>
+                <div class="preset-grid">
+                    <button class="preset-btn" data-preset="lunch"><span class="icon">🍜</span><span class="name">中午吃什么</span><span class="desc">选择困难症终结者</span></button>
+                    <button class="preset-btn" data-preset="crush"><span class="icon">💕</span><span class="name">TA喜不喜欢我</span><span class="desc">测测TA的心意</span></button>
+                    <button class="preset-btn" data-preset="yesno"><span class="icon">✅</span><span class="name">是还是否</span><span class="desc">命运帮你做决定</span></button>
+                    <button class="preset-btn" data-preset="movie"><span class="icon">🎬</span><span class="name">看啥电影</span><span class="desc">今晚的观影指南</span></button>
+                    <button class="preset-btn" data-preset="drink"><span class="icon">🧋</span><span class="name">喝什么奶茶</span><span class="desc">今天喝什么好呢</span></button>
+                    <button class="preset-btn" data-preset="exercise"><span class="icon">🏃</span><span class="name">今天运动啥</span><span class="desc">让命运决定你的运动</span></button>
+                    <button class="preset-btn" data-preset="weekend"><span class="icon">🎉</span><span class="name">周末去哪玩</span><span class="desc">周末活动安排</span></button>
+                    <button class="preset-btn" data-preset="study"><span class="icon">📚</span><span class="name">先学什么</span><span class="desc">学习计划安排</span></button>
+                    <button class="preset-btn" data-preset="travel"><span class="icon">✈️</span><span class="name">去哪旅行</span><span class="desc">下一站目的地</span></button>
+                    <button class="preset-btn" data-preset="mood"><span class="icon">🌈</span><span class="name">今天心情如何</span><span class="desc">测测今日心情指数</span></button>
+                </div>
+            </div>
+
+            <!-- AI智能生成 -->
+            <div class="ai-section">
+                <h2>✨ AI 智能生成</h2>
+                <div class="ai-input-row">
+                    <input type="text" id="aiInput" placeholder="例如：帮我生成一个周末活动的转盘">
+                    <button class="ai-btn" id="aiGenerateBtn">✨ AI生成</button>
+                </div>
+                <div class="ai-features">
+                    <button class="ai-feature-btn" id="ocrBtn">
+                        <span class="icon">📷</span>
+                        <span class="name">截图识别</span>
+                        <span class="badge">即将上线</span>
+                    </button>
+                    <button class="ai-feature-btn" id="locationBtn">
+                        <span class="icon">📍</span>
+                        <span class="name">附近美食</span>
+                        <span class="badge">即将上线</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 自定义转盘 -->
+            <div class="custom-section">
+                <h2>🎨 自定义转盘</h2>
+                <p>输入选项，每行一个或用逗号分隔</p>
+                <textarea id="customInput" placeholder="火锅&#10;烧烤&#10;寿司&#10;麻辣烫&#10;..."></textarea>
+                <button class="custom-start-btn" id="customStartBtn">🎡 开始转盘</button>
+            </div>
+        </section>
+
+        <!-- 视图2: 转盘页 -->
+        <section class="view" id="viewWheel">
+            <h2 class="wheel-title" id="wheelTitle">🎡 转盘</h2>
+            <div class="wheel-area">
+                <canvas id="wheelCanvas" width="400" height="400"></canvas>
+                <button class="spin-btn" id="spinBtn">✦ 转！</button>
+            </div>
+            <div class="result-area" id="resultArea" style="display:none;">
+                <div class="result-label" id="resultWheelName">转盘</div>
+                <div class="result-option" id="resultOption">选项</div>
+                <div class="result-quote">「有时候，最好的决定就是让命运替你做决定。」</div>
+                <div class="result-actions">
+                    <button class="respin-btn" id="respinBtn">🔄 再转一次</button>
+                    <button class="new-wheel-btn" id="newWheelBtn">📝 换个转盘</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="js/common/config.js"></script>
+    <script src="js/common/api.js"></script>
+    <script src="js/common/utils.js"></script>
+    <script src="js/common/effects.js"></script>
+    <script src="js/wheel/presets.js"></script>
+    <script src="js/wheel/wheel-renderer.js"></script>
+    <script src="js/wheel/ai-generator.js"></script>
+    <script src="js/wheel/app.js"></script>
+</body>
+</html>
