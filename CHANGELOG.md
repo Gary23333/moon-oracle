@@ -81,16 +81,24 @@
 
 ---
 
+## [2.1.0] - 2026-06-01
+
+### ✨ 新增 (Added)
+- **OCR 截图识别** — Tesseract.js 按需加载，浏览器端 OCR 识别图片文字，自动提取选项生成转盘
+- **附近美食双转盘** — Geolocation API 获取坐标，AI 推荐本地菜系（转盘1）→ 具体餐厅（转盘2）
+- **电影推荐转盘** — AI 生成热门/经典电影推荐，新增快捷按钮
+- **转盘结果 AI 解读** — `wheelResultAI` 配置开启后，转盘结果自动调用 DeepSeek 做趣味解读
+- **自定义权重** — 支持 `选项:权重` 格式（如 `火锅:3`），混合格式兼容
+
+---
+
 ## [Unreleased]
 
 ### 🗺 计划中 (Planned)
-- OCR 截图识别转盘生成
-- 基于地理位置的双转盘餐厅推荐
-- 电影选择器（接入实时上映数据）
-- 转盘结果 AI 解读
 - 多语言支持（英文界面）
 - PWA 离线支持
 - 更多牌阵和主题皮肤
 
+[2.1.0]: https://github.com/Gary23333/moon-oracle/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/Gary23333/moon-oracle/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/Gary23333/moon-oracle/releases/tag/v1.0.0
