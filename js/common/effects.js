@@ -1,6 +1,6 @@
 // 月影决策屋 - 视觉效果
 
-const MoonEffects = {
+export const MoonEffects = {
     _activeParticles: 0,
     _MAX_PARTICLES: 60,
 

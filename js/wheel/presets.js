@@ -1,6 +1,6 @@
 // 月影决策屋 - 预设转盘数据
 
-const WHEEL_PRESETS = {
+export const WHEEL_PRESETS = {
     lunch: {
         name: '中午吃什么', icon: '🍜', category: 'food',
         desc: '选择困难症终结者',

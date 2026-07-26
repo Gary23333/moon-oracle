@@ -1,6 +1,6 @@
 // 月影决策屋 - 牌阵定义
 
-const TAROT_SPREADS = {
+export const TAROT_SPREADS = {
     single: {
         name: '单牌占卜',
         cardCount: 1,
@@ -76,7 +76,7 @@ const TAROT_SPREADS = {
 };
 
 // 根据问题分类推荐牌阵
-const CATEGORY_SPREAD_RECOMMEND = {
+export const CATEGORY_SPREAD_RECOMMEND = {
     love:     { recommend: 'love_cross', reason: '爱情十字牌阵专为感情问题设计，能全面分析双方感受和关系走向' },
     career:   { recommend: 'career_pyramid', reason: '事业金字塔能清晰展示你的优势、挑战和发展方向' },
     wealth:   { recommend: 'three_card', reason: '三牌阵揭示财运的时间脉络，看清过去现在和未来' },
@@ -88,6 +88,6 @@ const CATEGORY_SPREAD_RECOMMEND = {
 };
 
 // 获取牌阵信息
-function getSpreadInfo(spreadType) {
+export function getSpreadInfo(spreadType) {
     return TAROT_SPREADS[spreadType] || TAROT_SPREADS.single;
 }

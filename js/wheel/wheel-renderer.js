@@ -1,6 +1,6 @@
 // 月影决策屋 - Canvas 转盘渲染引擎
 
-class WheelRenderer {
+export class WheelRenderer {
     constructor(canvas, options, weights = null) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');

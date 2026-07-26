@@ -1,6 +1,6 @@
 // 月影决策屋 - 工具函数
 
-const MoonUtils = {
+export const MoonUtils = {
     showToast(message, duration = 2000) {
         const toast = document.createElement('div');
         toast.className = 'toast';

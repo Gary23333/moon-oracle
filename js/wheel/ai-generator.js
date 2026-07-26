@@ -1,8 +1,10 @@
 // 月影决策屋 - AI 生成转盘
 
-const WheelAIGenerator = {
-    _tesseractLoaded: false,
+import { MoonConfig } from '../common/config.js';
+import { MoonAPI } from '../common/api.js';
+import { MoonUtils } from '../common/utils.js';
 
+export const WheelAIGenerator = {
     // 通用 AI 转盘生成（从 JSON 响应中提取转盘数据）
     async _parseWheelFromAI(prompt, userMessage) {
         const result = await MoonAPI.chatSingle(prompt, userMessage, { thinking: false });
@@ -39,29 +41,15 @@ const WheelAIGenerator = {
 
     // ========== Feature 1: OCR 截图识别 ==========
 
+    // 按需加载 Tesseract.js（npm 包，Vite 会自动处理其 worker 打包与加载路径）
     async _loadTesseract() {
-        if (this._tesseractLoaded && typeof Tesseract !== 'undefined') return true;
-        // 按需从 CDN 加载 Tesseract.js
-        return new Promise((resolve, reject) => {
-            if (typeof Tesseract !== 'undefined') {
-                this._tesseractLoaded = true;
-                resolve(true);
-                return;
-            }
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-            script.onload = () => {
-                this._tesseractLoaded = true;
-                resolve(true);
-            };
-            script.onerror = () => reject(new Error('OCR 库加载失败，请检查网络'));
-            document.head.appendChild(script);
-        });
+        const { default: Tesseract } = await import('tesseract.js');
+        return Tesseract;
     },
 
     async fromOCR(imageFile) {
         try {
-            await this._loadTesseract();
+            const Tesseract = await this._loadTesseract();
 
             const result = await Tesseract.recognize(imageFile, 'chi_sim+eng', {
                 logger: m => {

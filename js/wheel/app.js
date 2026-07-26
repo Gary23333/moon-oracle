@@ -1,6 +1,13 @@
 // 月影决策屋 - 转盘主逻辑
 
-const WheelApp = {
+import { MoonConfig } from '../common/config.js';
+import { MoonUtils } from '../common/utils.js';
+import { MoonEffects } from '../common/effects.js';
+import { WHEEL_PRESETS } from './presets.js';
+import { WheelRenderer } from './wheel-renderer.js';
+import { WheelAIGenerator } from './ai-generator.js';
+
+export const WheelApp = {
     state: {
         currentView: 'home',
         wheel: null,

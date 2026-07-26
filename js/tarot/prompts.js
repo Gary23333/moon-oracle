@@ -1,6 +1,10 @@
 // 月影决策屋 - 塔罗提示词
 
-const TAROT_PROMPTS = {
+import { MoonConfig } from '../common/config.js';
+import { getCategoryById } from './classifier.js';
+import { getSpreadInfo } from './spreads.js';
+
+export const TAROT_PROMPTS = {
     getGreeting() {
         return MoonConfig.current.tarotPrompts?.greeting || MoonConfig.defaults.tarotPrompts.greeting;
     },

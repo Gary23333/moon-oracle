@@ -1,6 +1,6 @@
 // 月影决策屋 - 78张塔罗牌完整数据
 
-const TAROT_IMAGE_FILES = [
+export const TAROT_IMAGE_FILES = [
     'RWS_Tarot_00_Fool.jpg','RWS_Tarot_01_Magician.jpg','RWS_Tarot_02_High_Priestess.jpg',
     'RWS_Tarot_03_Empress.jpg','RWS_Tarot_04_Emperor.jpg','RWS_Tarot_05_Hierophant.jpg',
     'RWS_Tarot_06_Lovers.jpg','RWS_Tarot_07_Chariot.jpg','RWS_Tarot_08_Strength.jpg',
@@ -27,7 +27,7 @@ const TAROT_IMAGE_FILES = [
     'Pents11.jpg','Pents12.jpg','Pents13.jpg','Pents14.jpg'
 ];
 
-const TAROT_CARDS = [
+export const TAROT_CARDS = [
     // ===== 大阿卡纳 (22张) =====
     {id:0,name:'愚者',nameEn:'The Fool',arcana:'major',suit:null,number:0,element:'风',planet:'天王星',
      symbol:'🃏',
@@ -513,7 +513,7 @@ const TAROT_CARDS = [
 ];
 
 // 获取完整的78张牌组
-function getFullDeck() {
+export function getFullDeck() {
     return TAROT_CARDS.map((card, index) => ({
         ...card,
         imageFile: TAROT_IMAGE_FILES[index]
@@ -521,14 +521,14 @@ function getFullDeck() {
 }
 
 // 获取大阿卡纳
-function getMajorArcana() {
+export function getMajorArcana() {
     return TAROT_CARDS.filter(c => c.arcana === 'major').map((card, i) => ({
         ...card, imageFile: TAROT_IMAGE_FILES[card.id]
     }));
 }
 
 // 获取小阿卡纳
-function getMinorArcana(suit) {
+export function getMinorArcana(suit) {
     return TAROT_CARDS.filter(c => c.suit === suit).map(card => ({
         ...card, imageFile: TAROT_IMAGE_FILES[card.id]
     }));

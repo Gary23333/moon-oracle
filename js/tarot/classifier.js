@@ -1,6 +1,6 @@
 // 月影决策屋 - 问题分类器
 
-const QUESTION_CATEGORIES = [
+export const QUESTION_CATEGORIES = [
     { id:'love',     icon:'💕', name:'情感姻缘', placeholder:'请描述你的感情困惑...', subQuestions:['你们目前是什么关系？','你想了解你自己的感受还是对方的想法？'] },
     { id:'career',   icon:'💼', name:'事业前程', placeholder:'请描述你的事业问题...', subQuestions:['你现在的工作是什么类型？','你是在考虑跳槽还是想了解发展？'] },
     { id:'wealth',   icon:'💰', name:'财运理财', placeholder:'请描述你的财务问题...', subQuestions:['你想了解投资还是日常财运？'] },
@@ -11,6 +11,6 @@ const QUESTION_CATEGORIES = [
     { id:'custom',   icon:'✏️', name:'其他问题', placeholder:'请描述你的具体问题...', subQuestions:[] }
 ];
 
-function getCategoryById(id) {
+export function getCategoryById(id) {
     return QUESTION_CATEGORIES.find(c => c.id === id) || QUESTION_CATEGORIES[7];
 }

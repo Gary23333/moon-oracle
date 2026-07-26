@@ -1,6 +1,6 @@
 // 月影决策屋 - 配置管理
 
-const MoonConfig = {
+export const MoonConfig = {
     defaults: {
         apiUrl: 'https://api.deepseek.com',
         apiKey: '',

@@ -1,6 +1,15 @@
 // 月影决策屋 - 塔罗占卜主逻辑
 
-const TarotApp = {
+import { MoonConfig } from '../common/config.js';
+import { MoonAPI } from '../common/api.js';
+import { MoonUtils } from '../common/utils.js';
+import { MoonEffects } from '../common/effects.js';
+import { TAROT_IMAGE_FILES, getFullDeck } from './cards-data.js';
+import { getCategoryById } from './classifier.js';
+import { CATEGORY_SPREAD_RECOMMEND, getSpreadInfo } from './spreads.js';
+import { TAROT_PROMPTS } from './prompts.js';
+
+export const TarotApp = {
     state: {
         currentView: 'welcome',
         category: null,

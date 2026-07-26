@@ -1,6 +1,8 @@
 // 月影决策屋 - DeepSeek API 封装
 
-const MoonAPI = {
+import { MoonConfig } from './config.js';
+
+export const MoonAPI = {
     _controller: null,
 
     abort() {
