@@ -29,12 +29,19 @@ export const MoonUtils = {
         if (overlay) overlay.classList.remove('active');
     },
 
-    formatText(text) {
+    sanitize(text) {
         if (!text) return '';
-        const escaped = text
+        return text
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    },
+
+    formatText(text) {
+        if (!text) return '';
+        const escaped = this.sanitize(text);
         return escaped
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')

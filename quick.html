@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="快速占卜 - 月影决策屋">
+    <meta name="description" content="快速占卜 - Yes/No 快占与答案之书 · 月影决策屋">
     <meta name="theme-color" content="#0a0612">
     <title>快速占卜 · 月影决策屋</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
@@ -11,17 +11,342 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Noto+Serif+SC:wght@200;300;400;500;600;700;900&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/base.css">
+    <style>
+        .back-home {
+            position: fixed; top: var(--space-lg); left: var(--space-lg);
+            color: var(--color-text-muted); text-decoration: none;
+            font-size: 0.9rem; z-index: 100; transition: color 0.3s ease;
+            display: flex; align-items: center; gap: var(--space-xs);
+        }
+        .back-home:hover { color: var(--color-gold); }
+
+        .main-container {
+            position: relative; z-index: 10;
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: var(--space-xl) var(--space-lg);
+            max-width: 600px; margin: 0 auto;
+        }
+
+        .page-title {
+            font-family: var(--font-display);
+            color: var(--color-gold);
+            font-size: 2.5rem;
+            margin-bottom: var(--space-sm);
+            text-align: center;
+            text-shadow: 0 0 20px rgba(212,168,67,0.3);
+        }
+
+        .page-subtitle {
+            color: var(--color-text-muted);
+            font-size: 1rem;
+            margin-bottom: var(--space-2xl);
+            text-align: center;
+            font-style: italic;
+        }
+
+        .input-section {
+            width: 100%;
+            margin-bottom: var(--space-xl);
+        }
+
+        .question-input {
+            width: 100%;
+            padding: var(--space-lg) var(--space-xl);
+            background: rgba(30,18,53,0.8);
+            border: 1px solid var(--color-purple-dark);
+            border-radius: var(--radius-xl);
+            color: var(--color-text);
+            font-size: 1.1rem;
+            font-family: var(--font-body);
+            text-align: center;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .question-input:focus {
+            outline: none;
+            border-color: var(--color-purple-glow);
+            box-shadow: 0 0 20px rgba(139,92,246,0.2);
+        }
+
+        .question-input::placeholder {
+            color: var(--color-text-muted);
+            opacity: 0.6;
+        }
+
+        .buttons-container {
+            display: flex;
+            gap: var(--space-lg);
+            width: 100%;
+            margin-bottom: var(--space-xl);
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: var(--space-lg) var(--space-xl);
+            border: none;
+            border-radius: var(--radius-xl);
+            font-size: 1.1rem;
+            font-family: var(--font-body);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
+            font-weight: 600;
+        }
+
+        .btn-oracle {
+            background: linear-gradient(135deg, var(--color-purple-dark) 0%, var(--color-purple-medium) 100%);
+            color: var(--color-text);
+            border: 1px solid var(--color-purple-medium);
+        }
+
+        .btn-oracle:hover {
+            background: linear-gradient(135deg, var(--color-purple-medium) 0%, var(--color-purple-light) 100%);
+            box-shadow: 0 0 25px rgba(139,92,246,0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn-answer {
+            background: linear-gradient(135deg, var(--color-gold-dark) 0%, var(--color-gold) 100%);
+            color: var(--color-bg-deep);
+            border: 1px solid var(--color-gold);
+        }
+
+        .btn-answer:hover {
+            background: linear-gradient(135deg, var(--color-gold) 0%, var(--color-gold-light) 100%);
+            box-shadow: 0 0 25px rgba(212,168,67,0.4);
+            transform: translateY(-2px);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .ai-enhance-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-xl);
+        }
+
+        .ai-enhance-checkbox {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--color-gold);
+        }
+
+        .ai-enhance-label {
+            color: var(--color-text-muted);
+            font-size: 0.9rem;
+        }
+
+        .result-container {
+            width: 100%;
+            min-height: 200px;
+            perspective: 1000px;
+        }
+
+        .result-card {
+            background: var(--color-bg-card);
+            border: 1px solid var(--color-purple-dark);
+            border-radius: var(--radius-xl);
+            padding: var(--space-xl);
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-xl);
+        }
+
+        .result-icon {
+            font-size: 2.5rem;
+        }
+
+        .result-title {
+            font-family: var(--font-display);
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .card-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-lg);
+            margin-bottom: var(--space-xl);
+            padding: var(--space-md);
+            background: rgba(0,0,0,0.2);
+            border-radius: var(--radius-lg);
+        }
+
+        .card-symbol {
+            font-size: 3rem;
+        }
+
+        .card-details {
+            text-align: left;
+        }
+
+        .card-name {
+            font-family: var(--font-display);
+            color: var(--color-gold);
+            font-size: 1.2rem;
+            margin-bottom: var(--space-xs);
+        }
+
+        .card-position {
+            color: var(--color-text-muted);
+            font-size: 0.9rem;
+        }
+
+        .result-comment {
+            color: var(--color-text);
+            font-size: 1rem;
+            line-height: 1.8;
+            white-space: pre-wrap;
+        }
+
+        .ai-section {
+            margin-top: var(--space-xl);
+            padding-top: var(--space-xl);
+            border-top: 1px solid var(--color-purple-dark);
+            text-align: left;
+        }
+
+        .ai-label {
+            color: var(--color-accent-teal);
+            font-size: 0.9rem;
+            margin-bottom: var(--space-md);
+            font-weight: 600;
+        }
+
+        .ai-content {
+            color: var(--color-text);
+            font-size: 0.95rem;
+            line-height: 1.8;
+        }
+
+        .answer-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .answer-icon {
+            font-size: 4rem;
+            margin-bottom: var(--space-lg);
+        }
+
+        .answer-quote {
+            font-size: 1.3rem;
+            line-height: 1.8;
+            font-style: italic;
+            margin-bottom: var(--space-xl);
+        }
+
+        .answer-footer {
+            display: flex;
+            gap: var(--space-md);
+        }
+
+        .answer-style, .answer-tag {
+            padding: var(--space-xs) var(--space-md);
+            background: rgba(0,0,0,0.2);
+            border-radius: var(--radius-full);
+            font-size: 0.8rem;
+            color: var(--color-text-muted);
+        }
+
+        .answer-tag {
+            background: rgba(139,92,246,0.2);
+            color: var(--color-starlight);
+        }
+
+        @media (max-width: 768px) {
+            .page-title { font-size: 1.8rem; }
+            .page-subtitle { font-size: 0.9rem; }
+            
+            .buttons-container {
+                flex-direction: column;
+            }
+            
+            .action-btn {
+                padding: var(--space-md) var(--space-lg);
+                font-size: 1rem;
+            }
+            
+            .card-info {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .card-details {
+                text-align: center;
+            }
+            
+            .result-title { font-size: 1.8rem; }
+            .result-icon { font-size: 2rem; }
+            
+            .answer-quote { font-size: 1.1rem; }
+        }
+    </style>
 </head>
 <body>
     <noscript><div style="text-align:center;padding:4rem;color:#d4a843;font-family:serif;"><h2>⚡ 月影决策屋</h2><p>需要JavaScript才能运行</p></div></noscript>
+    
     <div class="stars-container" id="starsContainer"></div>
     <div class="moon"></div>
+    
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-cards">
+                <div class="loading-card"></div>
+                <div class="loading-card"></div>
+                <div class="loading-card"></div>
+            </div>
+            <div class="loading-text">月影正在为你占卜...</div>
+        </div>
+    </div>
 
     <a href="index.html" class="back-home">← 返回首页</a>
 
-    <div style="position:relative;z-index:10;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:var(--space-xl);">
-        <h1 style="font-family:var(--font-display);color:var(--color-gold);font-size:2rem;">⚡ 快速占卜</h1>
-        <p style="color:var(--color-text-muted);margin-top:var(--space-md);">即将上线</p>
+    <div class="main-container">
+        <h1 class="page-title">⚡ 快速占卜</h1>
+        <p class="page-subtitle">一问一答，揭晓命运的指引</p>
+
+        <div class="input-section">
+            <input type="text" id="questionInput" class="question-input" 
+                   placeholder="输入你的问题，如：明天会有好事发生吗？" maxlength="100">
+        </div>
+
+        <div class="buttons-container">
+            <button id="oracleBtn" class="action-btn btn-oracle">
+                <span>🎴</span> Yes/No 快占
+            </button>
+            <button id="answerBtn" class="action-btn btn-answer">
+                <span>📖</span> 答案之书
+            </button>
+        </div>
+
+        <div id="aiEnhanceContainer" class="ai-enhance-container">
+            <input type="checkbox" id="aiEnhanceCheckbox" class="ai-enhance-checkbox">
+            <label for="aiEnhanceCheckbox" class="ai-enhance-label">🧠 AI 深度解读</label>
+        </div>
+
+        <div id="resultContainer" class="result-container"></div>
     </div>
 
     <script type="module" src="/js/quick.js"></script>

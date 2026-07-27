@@ -48,6 +48,15 @@ export const WheelAIGenerator = {
     },
 
     async fromOCR(imageFile) {
+        if (!imageFile) {
+            return { success: false, error: '请选择图片文件' };
+        }
+
+        const maxSize = 10 * 1024 * 1024;
+        if (imageFile.size > maxSize) {
+            return { success: false, error: `图片超过 10MB 限制，请选择更小的图片（当前大小：${(imageFile.size / 1024 / 1024).toFixed(1)}MB）` };
+        }
+
         try {
             const Tesseract = await this._loadTesseract();
 
@@ -65,7 +74,6 @@ export const WheelAIGenerator = {
                 return { success: false, error: '未能识别出文字，请尝试更清晰的图片' };
             }
 
-            // 从识别文本中提取选项
             const options = this._extractOptionsFromText(text);
             if (options.length < 2) {
                 return {
@@ -84,7 +92,18 @@ export const WheelAIGenerator = {
                 }
             };
         } catch (error) {
-            return { success: false, error: error.message || 'OCR 识别失败' };
+            let errorMsg = error.message || 'OCR 识别失败';
+            
+            if (error.message?.includes('fetch') || error.message?.includes('network') || 
+                error.message?.includes('CORS') || error.message?.includes('timeout')) {
+                errorMsg = '网络错误：无法加载 OCR 引擎，请检查网络连接';
+            } else if (error.message?.includes('FileReader') || error.message?.includes('blob')) {
+                errorMsg = '图片加载失败：无法读取图片文件';
+            } else if (error.message?.includes('Tesseract')) {
+                errorMsg = 'OCR 引擎初始化失败，请稍后重试';
+            }
+            
+            return { success: false, error: errorMsg };
         }
     },
 

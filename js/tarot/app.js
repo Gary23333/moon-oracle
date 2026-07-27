@@ -4,6 +4,7 @@ import { MoonConfig } from '../common/config.js';
 import { MoonAPI } from '../common/api.js';
 import { MoonUtils } from '../common/utils.js';
 import { MoonEffects } from '../common/effects.js';
+import { MoonPersona } from '../common/prompts.js';
 import { TAROT_IMAGE_FILES, getFullDeck } from './cards-data.js';
 import { getCategoryById } from './classifier.js';
 import { CATEGORY_SPREAD_RECOMMEND, getSpreadInfo } from './spreads.js';
@@ -273,6 +274,10 @@ export const TarotApp = {
     },
 
     async confirmCards() {
+        if (this.state.selectedCards.length === 0) {
+            MoonUtils.showToast('请至少选择一张牌');
+            return;
+        }
         if (this.state.selectedCards.length !== this.state.maxCards) return;
 
         // 获取选中的牌
@@ -326,6 +331,13 @@ export const TarotApp = {
         MoonUtils.showLoading('月影正在与命运对话...');
 
         try {
+            if (!this.state.question || !this.state.category || !this.state.spreadType) {
+                throw new Error('占卜数据不完整，请重新开始');
+            }
+            if (!this.state.revealedCards || this.state.revealedCards.length === 0) {
+                throw new Error('未选择任何牌');
+            }
+
             const spread = getSpreadInfo(this.state.spreadType);
             const context = {
                 question: this.state.question,
@@ -341,7 +353,10 @@ export const TarotApp = {
                 }))
             };
 
-            const systemPrompt = TAROT_PROMPTS.getReading(context);
+            const personaType = MoonConfig.get('readerPersona');
+            const personaPrompt = MoonPersona.getPersonaPrompt(personaType);
+            const basePrompt = TAROT_PROMPTS.getReading(context);
+            const systemPrompt = `${personaPrompt}\n\n${basePrompt}`;
             // 1.2: 保存系统提示词用于追问上下文
             this.state.readingSystemPrompt = systemPrompt;
             const userMessage = `请为我解读这次塔罗占卜。我的问题是：${this.state.question}`;
@@ -470,6 +485,11 @@ export const TarotApp = {
             const result = await MoonAPI.chat(messages);
             this.state.conversationHistory.push({ role: 'user', content: question });
             this.state.conversationHistory.push({ role: 'assistant', content: result.content, thinking: result.thinking });
+
+            const maxHistory = 20;
+            if (this.state.conversationHistory.length > maxHistory) {
+                this.state.conversationHistory = this.state.conversationHistory.slice(-maxHistory);
+            }
 
             // 2.6: 追问也显示思考过程
             this.addFollowupMessage('assistant', result.content, result.thinking);

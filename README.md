@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://img.shields.io/badge/🔮_Moon_Oracle-v2.1.0-8b5cf6?style=for-the-badge&labelColor=0a0612&color=d4a843" alt="Moon Oracle v2.1.0">
+<img src="https://img.shields.io/badge/🔮_Moon_Oracle-v3.0.0-8b5cf6?style=for-the-badge&labelColor=0a0612&color=d4a843" alt="Moon Oracle v3.0.0">
 
 # 🔮 Moon Oracle · 月影决策屋
 
@@ -13,7 +13,7 @@
 <br>
 
 <img src="https://img.shields.io/badge/license-MIT-d4a843?style=flat-square" alt="MIT License">
-<img src="https://img.shields.io/badge/version-v2.1.0-8b5cf6?style=flat-square" alt="Version">
+<img src="https://img.shields.io/badge/version-v3.0.0-8b5cf6?style=flat-square" alt="Version">
 <img src="https://img.shields.io/badge/PRs-Welcome-2dd4bf?style=flat-square" alt="PRs Welcome">
 <img src="https://img.shields.io/badge/zero--dependencies-✓-4ade80?style=flat-square" alt="Zero Dependencies">
 <br>
@@ -70,6 +70,35 @@
 </tr>
 </table>
 
+### 📅 每日塔罗
+
+- **日期种子算法** — 根据日期生成固定牌面，每天一牌不变
+- **Streak 连续天数统计** — 记录连续打卡天数
+- **40 条每日语录** — 精选神秘主题日签文案
+
+### 🎲 快占·答案之书
+
+- **Yes/No 快占** — 快速获取二元决策答案
+- **牌义加权算法** — 正逆位概率结合牌义倾向
+- **193 条答案之书** — 丰富的神秘学风格回复
+
+### 📜 占卜历史
+
+- **50 条上限存储** — localStorage 持久化
+- **类型筛选** — 支持按类型过滤记录
+- **详情查看与删除** — 完整历史管理
+
+### 🖼️ 分享卡片
+
+- **Canvas 生成 PNG** — 占卜结果一键生成分享图
+- **精美神秘主题设计** — 塔罗风格视觉效果
+
+### 👤 AI 解牌人格
+
+- **严肃智者** — 正统神秘学风格解读
+- **温柔疗愈** — 温暖关怀式解读
+- **毒舌好友** — 幽默犀利风格解读
+
 ### 🔧 共享能力
 
 | 能力 | 说明 |
@@ -89,10 +118,14 @@
 git clone https://github.com/Gary23333/moon-oracle.git
 cd moon-oracle
 
-# 直接用浏览器打开
-open index.html        # macOS
-start index.html       # Windows
-xdg-open index.html    # Linux
+# 安装依赖
+npm install
+
+# 启动开发服务器
+npm run dev
+
+# 构建生产版本
+npm run build
 ```
 
 **配置 DeepSeek API Key：**
@@ -101,7 +134,7 @@ xdg-open index.html    # Linux
 2. 打开页面右上角 ⚙️ 齿轮图标
 3. 填入 API Key → 保存
 
-> 💡 **没有 API Key？** 预设转盘、自定义转盘、OCR 识别均可独立使用。
+> 💡 **没有 API Key？** 预设转盘、自定义转盘、OCR 识别、每日塔罗均可独立使用。
 
 ---
 
@@ -109,30 +142,47 @@ xdg-open index.html    # Linux
 
 ```
 moon-oracle/
-├── index.html                         # 🏠 首页 — 双入口
+├── index.html                         # 🏠 首页 — 五入口矩阵
 ├── tarot.html                         # 🔮 塔罗占卜
 ├── wheel.html                         # 🎡 命运转盘
+├── daily.html                         # 📅 每日塔罗
+├── quick.html                         # 🎲 快占·答案之书
+├── history.html                       # 📜 占卜历史
 ├── css/
 │   ├── base.css                       # 基础样式 · 星空 · 配置面板
 │   ├── tarot.css                      # 塔罗样式 · 选牌 · 3D 翻转
-│   └── wheel.css                      # 转盘样式 · Canvas · 结果展示
+│   ├── wheel.css                      # 转盘样式 · Canvas · 结果展示
+│   ├── daily.css                      # 每日塔罗样式
+│   ├── quick.css                      # 快占样式
+│   └── history.css                    # 历史记录样式
 ├── js/
 │   ├── common/                        # 🔧 共享模块
 │   │   ├── config.js                  #   配置管理 (deepMerge)
 │   │   ├── api.js                     #   DeepSeek API 封装
 │   │   ├── utils.js                   #   工具函数 (Toast/XSS防护/打字动画)
-│   │   └── effects.js                 #   视觉效果 (星空/粒子/闪光)
+│   │   ├── effects.js                 #   视觉效果 (星空/粒子/闪光)
+│   │   └── prompts.js                 #   共享提示词模板
 │   ├── tarot/                         # 🔮 塔罗模块
 │   │   ├── app.js                     #   主控制器 (5 视图流转)
 │   │   ├── cards-data.js              #   78 张牌完整数据
 │   │   ├── spreads.js                 #   8 种牌阵定义
 │   │   ├── classifier.js              #   问题分类器
 │   │   └── prompts.js                 #   提示词模板
-│   └── wheel/                         # 🎡 转盘模块
-│       ├── app.js                     #   主控制器 (预设/自定义/AI/双转盘)
-│       ├── presets.js                 #   10 个预设转盘
-│       ├── ai-generator.js            #   AI 生成器 (OCR/位置/电影/解读)
-│       └── wheel-renderer.js          #   Canvas 渲染引擎
+│   ├── wheel/                         # 🎡 转盘模块
+│   │   ├── app.js                     #   主控制器 (预设/自定义/AI/双转盘)
+│   │   ├── presets.js                 #   10 个预设转盘
+│   │   ├── ai-generator.js            #   AI 生成器 (OCR/位置/电影/解读)
+│   │   └── wheel-renderer.js          #   Canvas 渲染引擎
+│   ├── daily/                         # 📅 每日塔罗模块
+│   │   ├── app.js                     #   主控制器
+│   │   └── quotes.js                  #   40 条每日语录
+│   ├── quick/                         # 🎲 快占模块
+│   │   ├── app.js                     #   主控制器
+│   │   ├── answers.js                 #   193 条答案之书
+│   │   └── weight-calc.js             #   牌义加权算法
+│   └── history/                       # 📜 历史模块
+│       ├── app.js                     #   主控制器
+│       └── storage.js                 #   localStorage 存储管理
 └── api-docs/
     └── README.md                      # 📖 API 接口文档
 ```
@@ -148,6 +198,7 @@ moon-oracle/
 | 模型名称 | AI 模型 | `deepseek-v4-flash` |
 | 思考模式 | DeepSeek 深度推理 | ✅ 开启 |
 | 思考强度 | 推理深度 | `high` |
+| 解牌人格 | 严肃智者/温柔疗愈/毒舌好友 | `严肃智者` |
 | 转盘 AI 解读 | 转盘结果趣味解读 | ❌ 关闭 |
 | 提示词模板 | 塔罗/转盘/OCR/位置/电影/解读 | 预设模板 |
 
@@ -191,6 +242,8 @@ moon-oracle/
 |:---|:---:|:---:|:---|
 | 塔罗完整占卜 | 1 次 | ✅ | 含完整牌义上下文 |
 | 塔罗追问 | 每次 1 次 | ✅ | 保持占卜上下文 |
+| 每日塔罗 | 0~1 次 | ✅ | 纯前端日期种子，可选 AI 解读 |
+| 快占·答案之书 | 0~1 次 | ❌ | 纯前端牌义加权，可选 AI 增强 |
 | 转盘 AI 生成 | 1 次 | ❌ | 自然语言 → JSON |
 | OCR 识别 | 0 次 | — | Tesseract.js 浏览器端 |
 | 附近美食 | 2 次 | ❌ | 菜系推荐 + 餐厅推荐 |
@@ -224,6 +277,7 @@ moon-oracle/
 
 | 版本 | 日期 | 亮点 |
 |:---|:---|:---|
+| **v3.0.0** | 2026-07-27 | 每日塔罗 · 快占·答案之书 · 占卜历史 · 分享卡片 · AI 解牌人格 · Vite 多页应用 |
 | **v2.1.0** | 2026-06-01 | OCR 截图识别 · 附近美食双转盘 · 电影推荐 · AI 结果解读 · 自定义权重 |
 | **v2.0.0** | 2026-06-01 | Bug 修复 · 无障碍 · 性能优化 · SEO |
 | **v1.0.0** | 2026-05-27 | 初始发布 · 塔罗占卜 · 命运转盘 · DeepSeek 集成 |

@@ -4,11 +4,16 @@ import { MoonConfig } from './config.js';
 
 export const MoonAPI = {
     _controller: null,
+    _timeoutId: null,
 
     abort() {
         if (this._controller) {
             this._controller.abort();
             this._controller = null;
+        }
+        if (this._timeoutId) {
+            clearTimeout(this._timeoutId);
+            this._timeoutId = null;
         }
     },
 
@@ -20,7 +25,7 @@ export const MoonAPI = {
 
         this.abort();
         this._controller = new AbortController();
-        const timeoutId = setTimeout(() => this._controller.abort(), options.timeout || 120000);
+        this._timeoutId = setTimeout(() => this._controller.abort(), options.timeout || 120000);
 
         const body = {
             model: options.model || config.model,
@@ -28,7 +33,6 @@ export const MoonAPI = {
             stream: false
         };
 
-        // 思考模式配置（注意：思考模式不支持 temperature/top_p 等参数）
         if (options.thinking !== false && config.thinkingEnabled) {
             body.thinking = { type: 'enabled' };
             body.reasoning_effort = options.reasoningEffort || config.thinkingEffort || 'high';
@@ -45,11 +49,12 @@ export const MoonAPI = {
                 signal: this._controller.signal
             });
 
-            clearTimeout(timeoutId);
+            clearTimeout(this._timeoutId);
+            this._timeoutId = null;
 
             if (!response.ok) {
                 const errorText = await response.text();
-                let errorMsg = `HTTP ${response.status}`;
+                let errorMsg = this._getHttpErrorMessage(response.status);
                 try {
                     const errorData = JSON.parse(errorText);
                     errorMsg = errorData.error?.message || errorData.message || errorMsg;
@@ -72,11 +77,33 @@ export const MoonAPI = {
                 usage: data.usage
             };
         } catch (err) {
-            clearTimeout(timeoutId);
+            clearTimeout(this._timeoutId);
+            this._timeoutId = null;
             if (err.name === 'AbortError') {
                 throw new Error('请求已取消或超时');
             }
             throw err;
+        }
+    },
+
+    _getHttpErrorMessage(status) {
+        switch (status) {
+            case 401:
+                return 'API Key 无效或已过期，请检查配置';
+            case 403:
+                return 'API 额度不足或权限受限，请检查账号状态';
+            case 404:
+                return 'API 接口不存在，请检查 API 地址配置';
+            case 429:
+                return '请求过于频繁，请稍后重试';
+            case 500:
+                return '服务端错误，请稍后重试';
+            case 502:
+            case 503:
+            case 504:
+                return '服务暂不可用，请稍后重试';
+            default:
+                return `HTTP ${status} 错误`;
         }
     },
 

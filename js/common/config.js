@@ -4,13 +4,13 @@ export const MoonConfig = {
     defaults: {
         apiUrl: 'https://api.deepseek.com',
         apiKey: '',
-        model: 'deepseek-v4-flash',
+        model: 'deepseek-v4-flash', // DeepSeek 官方支持的模型，支持思考模式
         thinkingEnabled: true,
         thinkingEffort: 'high',
         showThinking: false,
         typingSpeed: 30,
-        soundEnabled: true,
         wheelResultAI: false,
+        readerPersona: 'gentle',
         tarotPrompts: {
             greeting: `你是月影，月影塔罗屋的占卜师。用神秘、温暖、诗意的语言欢迎来访者，营造神秘氛围。
 氛围描述：烛光摇曳，水晶球折射幽蓝光芒，乳香与薰衣草气息弥漫。

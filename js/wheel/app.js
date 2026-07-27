@@ -26,6 +26,26 @@ export const WheelApp = {
         return el;
     },
 
+    _validateWeights(options, weights) {
+        if (!weights || weights.length === 0) return { valid: true };
+        if (weights.length !== options.length) {
+            return { valid: false, error: '权重数量与选项数量不一致' };
+        }
+        for (let i = 0; i < weights.length; i++) {
+            const w = weights[i];
+            if (isNaN(w) || !isFinite(w)) {
+                return { valid: false, error: '权重值必须为有效数字' };
+            }
+            if (w <= 0) {
+                return { valid: false, error: '权重值必须为正整数' };
+            }
+            if (!Number.isInteger(w)) {
+                return { valid: false, error: '权重值必须为整数' };
+            }
+        }
+        return { valid: true };
+    },
+
     init() {
         MoonConfig.init();
         MoonEffects.init();
@@ -113,13 +133,30 @@ export const WheelApp = {
 
     selectPreset(presetId) {
         const preset = WHEEL_PRESETS[presetId];
-        if (!preset) return;
+        if (!preset) {
+            MoonUtils.showToast('预设数据不存在');
+            return;
+        }
+        if (!preset.options || !Array.isArray(preset.options) || preset.options.length < 2) {
+            MoonUtils.showToast('预设选项数据不完整');
+            return;
+        }
+        if (preset.weights && (!Array.isArray(preset.weights) || preset.weights.length !== preset.options.length)) {
+            MoonUtils.showToast('预设权重数据不完整');
+            return;
+        }
         this.state.currentPreset = presetId;
         this.state.isDualWheel = false;
         this.startWheel(preset.name, preset.icon, preset.options, preset.weights);
     },
 
     startWheel(name, icon, options, weights = null) {
+        const weightCheck = this._validateWeights(options, weights);
+        if (!weightCheck.valid) {
+            MoonUtils.showToast(weightCheck.error);
+            return;
+        }
+
         const wheelTitle = this._safeGetElement('wheelTitle');
         if (wheelTitle) wheelTitle.textContent = `${icon} ${name}`;
 

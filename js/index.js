@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cfgThinkingEffort').value = c.thinkingEffort || 'high';
         document.getElementById('cfgShowThinkingToggle').classList.toggle('active', c.showThinking);
         document.getElementById('cfgWheelAIToggle').classList.toggle('active', c.wheelResultAI);
-        document.getElementById('cfgSoundToggle').classList.toggle('active', c.soundEnabled);
+        document.getElementById('cfgPersona').value = c.readerPersona || 'gentle';
         document.getElementById('cfgPromptGreeting').value = c.tarotPrompts?.greeting || '';
         document.getElementById('cfgPromptReading').value = c.tarotPrompts?.reading || '';
         document.getElementById('cfgPromptWheel').value = c.wheelPrompts?.generate || '';
@@ -53,13 +53,13 @@ document.addEventListener('DOMContentLoaded', () => {
     setupToggle('cfgThinkingToggle', 'thinkingEnabled');
     setupToggle('cfgShowThinkingToggle', 'showThinking');
     setupToggle('cfgWheelAIToggle', 'wheelResultAI');
-    setupToggle('cfgSoundToggle', 'soundEnabled');
 
     configSave.addEventListener('click', () => {
         MoonConfig.set('apiUrl', document.getElementById('cfgApiUrl').value);
         MoonConfig.set('apiKey', document.getElementById('cfgApiKey').value);
         MoonConfig.set('model', document.getElementById('cfgModel').value);
         MoonConfig.set('thinkingEffort', document.getElementById('cfgThinkingEffort').value);
+        MoonConfig.set('readerPersona', document.getElementById('cfgPersona').value);
         MoonConfig.current.tarotPrompts = {
             ...MoonConfig.current.tarotPrompts,
             greeting: document.getElementById('cfgPromptGreeting').value,

@@ -5,7 +5,7 @@ export class WheelRenderer {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.options = options;
-        this.weights = weights || options.map(() => 1);
+        this.weights = this._normalizeWeights(weights || options.map(() => 1), options.length);
         this.rotation = 0;
         this.isSpinning = false;
         this.onResult = null;
@@ -34,6 +34,26 @@ export class WheelRenderer {
     }
 
     // 3.2: 将指针绘制到离屏 canvas，每帧直接 drawImage
+    _normalizeWeights(weights, count) {
+        const minWeight = 1;
+        const maxWeight = 100;
+        
+        return weights.map(w => {
+            let weight = w;
+            if (isNaN(weight) || !isFinite(weight) || weight <= 0) {
+                weight = 1;
+            }
+            weight = Math.min(Math.max(weight, minWeight), maxWeight);
+            return Math.round(weight);
+        });
+    }
+
+    _truncateText(text, maxLength = 8) {
+        if (!text) return '';
+        if (text.length <= maxLength) return text;
+        return text.slice(0, maxLength) + '...';
+    }
+
     _buildPointerCache() {
         const w = this.canvas.width;
         const h = this.canvas.height;
@@ -99,7 +119,8 @@ export class WheelRenderer {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             const textRadius = radius * 0.65;
-            ctx.fillText(option, textRadius, 0);
+            const truncatedText = this._truncateText(option, Math.max(4, 8 - options.length));
+            ctx.fillText(truncatedText, textRadius, 0);
             ctx.restore();
 
             currentAngle = endAngle;
@@ -185,7 +206,7 @@ export class WheelRenderer {
 
     setOptions(options, weights = null) {
         this.options = options;
-        this.weights = weights || options.map(() => 1);
+        this.weights = this._normalizeWeights(weights || options.map(() => 1), options.length);
         this.rotation = 0;
         this.draw();
     }

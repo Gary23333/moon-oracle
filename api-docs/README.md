@@ -245,7 +245,104 @@ const result = await WheelAIGenerator.interpretResult(wheelName, resultOption);
 
 ---
 
-## 5. 错误处理
+## 5. 每日塔罗 API 调用
+
+### 5.1 日期种子算法
+
+**用途**：根据日期生成固定的塔罗牌面，无需 API 调用
+
+**实现方式**：
+
+```javascript
+// 日期哈希生成种子
+const seed = Date.now() / (1000 * 60 * 60 * 24) | 0;
+// 使用 seed 选择牌和正逆位
+const cardIndex = seed % 78;
+const isReversed = (seed % 10) >= 5;
+```
+
+**特点**：
+- 同一天访问始终返回相同牌面
+- 完全纯前端，无需 API
+- 支持 Streak 连续打卡统计
+
+### 5.2 AI 解读（可选）
+
+**触发时机**：用户点击"AI 解读"按钮
+
+**系统提示词**：包含日期、牌面信息、40 条语录之一
+
+**调用方式**：
+
+```javascript
+const result = await MoonAPI.chatSingle(dailyPrompt, userMessage, { thinking: true });
+// result.content - 解读文本
+// result.thinking - 思考过程
+```
+
+**输入内容**：
+- 当前日期
+- 抽到的牌名称、正逆位
+- 牌义关键词
+- 当日语录
+
+**输出内容**：
+- 今日运势概述
+- 牌面解读
+- 行动建议
+- 能量指引
+
+---
+
+## 6. 快占·答案之书 API 调用
+
+### 6.1 牌义加权算法
+
+**用途**：根据牌义倾向计算 Yes/No 概率，无需 API 调用
+
+**实现方式**：
+
+```javascript
+// 每张牌有加权分数：正位倾向、逆位倾向
+// 随机抽牌后计算最终倾向
+const card = drawRandomCard();
+const weight = card.reversed ? card.reverseWeight : card.uprightWeight;
+// 根据权重从 193 条答案中选择
+const answer = selectAnswer(weight);
+```
+
+**特点**：
+- 完全纯前端，无需 API
+- 193 条答案覆盖各种倾向
+- 支持正逆位概率调整
+
+### 6.2 AI 增强（可选）
+
+**触发时机**：用户点击"AI 深度解读"按钮
+
+**系统提示词**：包含牌面信息、答案文本、用户问题
+
+**调用方式**：
+
+```javascript
+const result = await MoonAPI.chatSingle(quickPrompt, userMessage, { thinking: false });
+// result.content - 增强解读文本
+```
+
+**输入内容**：
+- 用户问题
+- 抽到的牌名称、正逆位
+- 答案文本
+- 牌义关键词
+
+**输出内容**：
+- 深度解读
+- 结合问题的分析
+- 建议与指引
+
+---
+
+## 8. 错误处理
 
 ### HTTP 状态码
 
@@ -287,7 +384,7 @@ try {
 
 ---
 
-## 6. 配置项说明
+## 9. 配置项说明
 
 所有配置存储在 `localStorage` 的 `moon_oracle_config` 键中。
 
@@ -300,13 +397,18 @@ try {
   "thinkingEffort": "high",
   "showThinking": false,
   "typingSpeed": 30,
-  "soundEnabled": true,
+  "readerPersona": "严肃智者",
   "wheelResultAI": false,
   "tarotPrompts": {
     "greeting": "问候提示词",
     "reading": "解读提示词",
     "followup": "追问提示词",
-    "detailQuestion": "细节追问词"
+    "detailQuestion": "细节追问词",
+    "persona": {
+      "严肃智者": "正统神秘学风格",
+      "温柔疗愈": "温暖关怀式",
+      "毒舌好友": "幽默犀利风格"
+    }
   },
   "wheelPrompts": {
     "generate": "转盘生成提示词",
@@ -314,18 +416,26 @@ try {
     "locationDetail": "餐厅推荐提示词",
     "movie": "电影推荐提示词",
     "resultInterpret": "结果解读提示词"
+  },
+  "dailyPrompts": {
+    "reading": "每日塔罗解读提示词"
+  },
+  "quickPrompts": {
+    "enhance": "快占 AI 增强提示词"
   }
 }
 ```
 
 ---
 
-## 7. 调用频率与限制
+## 10. 调用频率与限制
 
 | 功能 | 调用频率 | 思考模式 | 说明 |
 |------|---------|---------|------|
 | 塔罗占卜 | 1 次 | ✅ | 含完整牌义上下文 |
 | 塔罗追问 | 每次 1 次 | ✅ | 保持占卜上下文 |
+| 每日塔罗 | 0~1 次 | ✅ | 纯前端日期种子，可选 AI 解读 |
+| 快占·答案之书 | 0~1 次 | ❌ | 纯前端牌义加权，可选 AI 增强 |
 | 转盘 AI 生成 | 1 次 | ❌ | 响应较快 |
 | OCR 识别 | 0 次 | — | Tesseract.js 浏览器端 |
 | 附近美食 | 2 次 | ❌ | 菜系 + 餐厅 |
@@ -340,7 +450,7 @@ try {
 
 ---
 
-## 8. 安全注意事项
+## 11. 安全注意事项
 
 1. **API Key 存储**：当前存储在 localStorage，可被 XSS 攻击窃取。生产环境建议通过后端代理。
 2. **输入校验**：用户输入应做长度限制，防止超长 prompt。
