@@ -42,8 +42,9 @@ build/
 # Logs
 *.log
 
-# Screenshots (keep out of repo until ready)
-screenshots/
+# Screenshots are now part of the repo (used in README)
+# To regenerate: node scripts/screenshot.mjs (requires npm run dev running)
+# screenshots/
 
 # Temporary files
 *.tmp
