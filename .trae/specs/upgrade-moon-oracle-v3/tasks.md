@@ -40,10 +40,10 @@
 
 - [x] Task 7: 首页升级 — 功能矩阵五入口（塔罗/转盘/每日塔罗/快占/历史），保持视觉风格与移动端响应式
 
-- [ ] Task 8: 文档与发布
-  - [ ] SubTask 8.1: README.md 更新至 v3.0.0（新功能、Vite Quick Start、项目结构）
-  - [ ] SubTask 8.2: CHANGELOG.md 新增 v3.0.0 条目；api-docs 同步
-  - [ ] SubTask 8.3: .gitignore 补充 node_modules/dist；git commit 并 push 到 origin
+- [x] Task 8: 文档与发布
+  - [x] SubTask 8.1: README.md 更新至 v3.0.0（新功能、Vite Quick Start、项目结构）
+  - [x] SubTask 8.2: CHANGELOG.md 新增 v3.0.0 条目；api-docs 同步
+  - [x] SubTask 8.3: .gitignore 补充 node_modules/dist；git commit 并 push 到 origin（commit 已完成，push 因 GitHub 凭证未配置暂未成功，需用户手动执行）
 
 # Task Dependencies
 - [Task 2] depends on [Task 1]
