@@ -3,51 +3,62 @@
 import { MoonConfig } from '../common/config.js';
 import { getCategoryById } from './classifier.js';
 import { getSpreadInfo } from './spreads.js';
+import { TAROT_CARDS } from './cards-data.js';
 
 export const TAROT_PROMPTS = {
     getGreeting() {
         return MoonConfig.current.tarotPrompts?.greeting || MoonConfig.defaults.tarotPrompts.greeting;
     },
 
-    getReading(context) {
-        const base = MoonConfig.current.tarotPrompts?.reading || MoonConfig.defaults.tarotPrompts.reading;
-        return `${base}
+    // 稳定的解读格式模板（同一用户配置下逐字节一致，利于前缀缓存）
+    readingTemplate() {
+        return MoonConfig.current.tarotPrompts?.reading || MoonConfig.defaults.tarotPrompts.reading;
+    },
 
-## 当前占卜信息
+    // 稳定的追问模板
+    followupTemplate() {
+        return MoonConfig.current.tarotPrompts?.followup || MoonConfig.defaults.tarotPrompts.followup;
+    },
+
+    // 只按 id 从完整牌库查取单张牌的牌义，不再内嵌 78 张全表
+    _getCardData(card) {
+        if (!card || card.id === undefined || card.id === null) return null;
+        return TAROT_CARDS.find(c => c.id === card.id) || null;
+    },
+
+    // 组装单张牌的动态牌义块（仅注入这一张牌的 name / orientation / 牌义 / keywords）
+    _formatCardBlock(card, index) {
+        const data = this._getCardData(card);
+        const isReversed = card.orientation === '逆位';
+        const name = data?.name || card.name || '未知牌';
+        const orientation = card.orientation || '正位';
+        const meaning = data
+            ? (isReversed ? data.reversedMeaning : data.uprightMeaning)
+            : (card.meaning || '');
+        const keywords = data
+            ? (isReversed ? data.reversedKeywords : data.uprightKeywords)
+            : (card.keywords || []);
+        const position = card.position || '';
+
+        return `🔮 第${index + 1}张牌——${position}
+【牌名】${name}（${orientation}）
+【关键词】${keywords.join('、')}
+【牌义】${meaning}`;
+    },
+
+    // 动态块：当前占卜信息 + 本次抽到的每张牌牌义 + 解读要求（应拼接在稳定前缀之后）
+    getReadingDynamic(context) {
+        const cards = Array.isArray(context.cards) ? context.cards : [];
+        const cardBlocks = cards.map((card, index) => this._formatCardBlock(card, index)).join('\n\n');
+
+        return `## 当前占卜信息
 - 用户问题：${context.question}
 - 问题分类：${context.category}
 - 牌阵类型：${context.spreadType}（${context.spreadName}）
 - 用户补充细节：${context.details || '无'}
 
-## 78张大阿卡纳牌义参考
-1 愚者：正位-新开始冒险纯真；逆位-鲁莽缺乏计划
-2 魔术师：正位-创造力意志力掌控；逆位-操控欺骗
-3 女祭司：正位-直觉智慧神秘；逆位-忽视直觉
-4 女皇：正位-丰饶母性创造；逆位-依赖过度
-5 皇帝：正位-权威秩序稳定；逆位-专制僵化
-6 教皇：正位-传统信仰指引；逆位-教条束缚
-7 恋人：正位-爱情选择结合；逆位-关系失衡
-8 战车：正位-胜利意志前进；逆位-失去方向
-9 力量：正位-勇气坚韧克制；逆位-自我怀疑
-10 隐者：正位-内省独处智慧；逆位-过度孤立
-11 命运之轮：正位-命运转折机遇；逆位-厄运低谷
-12 正义：正位-公正平衡真相；逆位-不公正逃避
-13 倒吊人：正位-牺牲新视角等待；逆位-无谓牺牲
-14 死神：正位-结束转化重生；逆位-抗拒改变
-15 节制：正位-平衡调和中庸；逆位-失衡极端
-16 恶魔：正位-欲望束缚诱惑；逆位-挣脱束缚
-17 塔：正位-突变崩塌觉醒；逆位-逃避变革
-18 星星：正位-希望灵感治愈；逆位-失去希望
-19 月亮：正位-潜意识直觉幻象；逆位-走出迷雾
-20 太阳：正位-成功喜悦活力；逆位-短暂低落
-21 审判：正位-觉醒重生审视；逆位-自我怀疑
-22 世界：正位-圆满完成整合；逆位-未完成
-
-小阿卡纳各花色含义：
-- 权杖(火)：事业、激情、创造力
-- 圣杯(水)：感情、直觉、情绪
-- 宝剑(风)：思维、冲突、真相
-- 星币(土)：物质、健康、实际
+## 本次抽到的牌
+${cardBlocks || '（无牌面数据）'}
 
 ## 解读要求
 1. 先感谢用户提供的细节（如果有）
@@ -56,11 +67,9 @@ export const TAROT_PROMPTS = {
 4. 最后给出整体解读、关键启示、建议指引、月影寄语`;
     },
 
-    getFollowup(context) {
-        const base = MoonConfig.current.tarotPrompts?.followup || MoonConfig.defaults.tarotPrompts.followup;
-        return `${base}
-
-## 当前占卜信息
+    // 追问动态块（应拼接在稳定前缀 + followupTemplate 之后）
+    getFollowupDynamic(context) {
+        return `## 当前占卜信息
 - 用户问题：${context.question}
 - 之前的解读：${context.previousReading}
 - 牌阵类型：${context.spreadType}
@@ -77,7 +86,7 @@ export const TAROT_PROMPTS = {
         const base = MoonConfig.current.tarotPrompts?.detailQuestion || MoonConfig.defaults.tarotPrompts.detailQuestion;
         const cat = getCategoryById(category);
         const spread = getSpreadInfo(spreadType);
-        
+
         return `${base}
 
 用户选择了【${cat.name}】分类，将使用【${spread.name}】进行占卜。

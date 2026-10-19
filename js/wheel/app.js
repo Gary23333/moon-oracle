@@ -241,7 +241,7 @@ export const WheelApp = {
         }
 
         this.state.aiGenerating = true;
-        MoonUtils.showLoading('正在加载 OCR 引擎...');
+        MoonUtils.showLoading('正在用 AI 识别截图...');
 
         try {
             const result = await WheelAIGenerator.fromOCR(file);
@@ -358,16 +358,25 @@ export const WheelApp = {
         if (!interpretEl) return;
 
         interpretEl.style.display = '';
-        interpretEl.innerHTML = '<div class="interpret-loading">✨ 月影正在解读命运的选择...</div>';
+        interpretEl.innerHTML = '<div class="interpret-content"><div class="interpret-loading">✨ 月影正在解读命运的选择...</div></div>';
+        const contentEl = interpretEl.querySelector('.interpret-content');
+
+        const renderer = MoonUtils.createStreamRenderer(() => contentEl, {
+            showThinking: MoonConfig.get('showThinking')
+        });
 
         try {
-            const result = await WheelAIGenerator.interpretResult(wheelName, resultOption);
+            const result = await WheelAIGenerator.interpretResult(wheelName, resultOption, {
+                onDelta: (text) => renderer.appendContent(text),
+                onReasoning: (text) => renderer.appendReasoning(text)
+            });
             if (result.success) {
-                interpretEl.innerHTML = `<div class="interpret-content">${MoonUtils.formatText(result.content)}</div>`;
+                renderer.finish();
             } else {
                 interpretEl.style.display = 'none';
             }
         } catch (error) {
+            renderer.cancel();
             interpretEl.style.display = 'none';
         }
     },

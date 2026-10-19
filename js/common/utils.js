@@ -122,6 +122,84 @@ export const MoonUtils = {
         });
     },
 
+    /**
+     * 创建流式渲染器：把增量 content / reasoning 累积并安全渲染到目标元素。
+     * @param {HTMLElement|string|Function} target 目标元素、元素 id 或返回元素的 getter（支持延迟获取）
+     * @param {{ showThinking?: boolean }} options
+     * @returns {{ content:string, thinking:string, appendContent:(t:string)=>void, appendReasoning:(t:string)=>void, render:()=>void, finish:()=>{content:string,thinking:string}, cancel:()=>void }}
+     */
+    createStreamRenderer(target, options = {}) {
+        const showThinking = options.showThinking === true;
+        const self = this;
+
+        const resolveEl = () => {
+            if (typeof target === 'function') return target();
+            if (typeof target === 'string') return document.getElementById(target);
+            return target || null;
+        };
+
+        const renderer = {
+            content: '',
+            thinking: '',
+            _finished: false,
+
+            _autoScroll(el) {
+                let node = el.parentElement;
+                while (node) {
+                    const style = window.getComputedStyle(node);
+                    if (/(auto|scroll|overlay)/.test(style.overflowY) && node.scrollHeight > node.clientHeight) {
+                        node.scrollTop = node.scrollHeight;
+                        return;
+                    }
+                    node = node.parentElement;
+                }
+                if (document.documentElement.scrollHeight > window.innerHeight) {
+                    window.scrollTo({ top: document.documentElement.scrollHeight });
+                }
+            },
+
+            render() {
+                const el = resolveEl();
+                if (!el) return;
+
+                let html = '';
+                if (showThinking && this.thinking) {
+                    html += `<div class="thinking-box"><strong>月影的思考过程：</strong><br>${self.formatText(this.thinking)}</div>`;
+                    if (this.content) html += '<hr>';
+                }
+                html += self.formatText(this.content);
+                // 始终整体重写，保证幂等、不重复渲染
+                el.innerHTML = html;
+
+                this._autoScroll(el);
+            },
+
+            appendContent(text) {
+                if (!text) return;
+                this.content += text;
+                this.render();
+            },
+
+            appendReasoning(text) {
+                if (!text) return;
+                this.thinking += text;
+                this.render();
+            },
+
+            finish() {
+                this._finished = true;
+                this.render();
+                return { content: this.content, thinking: this.thinking };
+            },
+
+            cancel() {
+                this._finished = true;
+            }
+        };
+
+        return renderer;
+    },
+
     randomInt(min, max) {
         return Math.floor(Math.random() * (max - min + 1)) + min;
     },

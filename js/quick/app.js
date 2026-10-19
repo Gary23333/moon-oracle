@@ -2,6 +2,7 @@ import { MoonConfig } from '../common/config.js';
 import { MoonAPI } from '../common/api.js';
 import { MoonUtils } from '../common/utils.js';
 import { MoonEffects } from '../common/effects.js';
+import { resolveTaskRoute } from '../common/routing.js';
 import { MoonOracle } from './oracle.js';
 import { MoonAnswers } from './answers.js';
 import { MoonHistory } from '../history/store.js';
@@ -53,18 +54,23 @@ class QuickApp {
         }
 
         this.showLoading();
-        
+
         try {
             const result = MoonOracle.draw(question);
             const useAI = this.aiEnhanceCheckbox?.checked || false;
-            
-            if (useAI && MoonConfig.current.apiKey) {
-                result.aiInterpretation = await this.getAIInterpretation(question, result);
+            const willUseAI = useAI && !!MoonConfig.current.apiKey;
+
+            // 先展示结果卡片（并在需要时预留 .ai-section 流式容器）
+            const aiContentEl = this.displayOracleResult(result, willUseAI);
+            this.hideLoading();
+
+            // 卡片已可见后再流式写入 AI 解读
+            if (willUseAI && aiContentEl) {
+                const aiText = await this.getAIInterpretation(question, result, aiContentEl);
+                if (aiText) result.aiInterpretation = aiText;
             }
-            
-            await this.displayOracleResult(result);
+
             this.saveToHistory(result);
-            
             MoonEffects.createParticleBurst(window.innerWidth / 2, window.innerHeight / 2);
         } catch (error) {
             MoonUtils.showToast(error.message);
@@ -97,8 +103,10 @@ class QuickApp {
         }
     }
 
-    async getAIInterpretation(question, oracleResult) {
-        const prompt = `你是月影，月影塔罗屋的占卜师。用户问了一个是非问题："${question}"。
+    async getAIInterpretation(question, oracleResult, aiContentEl) {
+        // 固定指令放 system，动态内容（问题 / 牌面 / 结果）放 user
+        const systemPrompt = '你是月影，月影塔罗屋的占卜师。用神秘、温暖、诗意的语言解读塔罗占卜结果。';
+        const userMessage = `用户问了一个是非问题："${question}"。
 塔罗牌抽取结果：
 - 牌名：${oracleResult.card.name}（${oracleResult.card.isReversed ? '逆位' : '正位'}）
 - 牌组：${oracleResult.card.arcana === 'major' ? '大阿卡纳' : 
@@ -118,16 +126,36 @@ class QuickApp {
 4. 150-250字
 5. 使用🌙✨🔮等符号点缀`;
 
+        const route = resolveTaskRoute('quick');
+        const renderer = MoonUtils.createStreamRenderer(() => aiContentEl, {
+            showThinking: MoonConfig.get('showThinking')
+        });
+
         try {
-            const response = await MoonAPI.chatSingle(prompt, question);
+            const response = await MoonAPI.streamChat(
+                [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userMessage }
+                ],
+                route,
+                {
+                    onDelta: (text) => renderer.appendContent(text),
+                    onReasoning: (text) => renderer.appendReasoning(text)
+                }
+            );
+            renderer.finish();
             return response.content;
         } catch (e) {
+            renderer.cancel();
+            if (!renderer.content && aiContentEl) {
+                aiContentEl.textContent = 'AI 解读暂时不可用，请稍后再试';
+            }
             console.warn('AI interpretation failed:', e.message);
             return null;
         }
     }
 
-    async displayOracleResult(result) {
+    displayOracleResult(result, withAI = false) {
         const resultText = result.resultText;
         const resultColor = result.result === 'yes' ? 'var(--color-gold)' : 
             result.result === 'no' ? '#ef4444' : '#8b5cf6';
@@ -168,12 +196,24 @@ class QuickApp {
                     <div class="ai-content">${MoonUtils.formatText(result.aiInterpretation)}</div>
                 </div>
             `;
+        } else if (withAI) {
+            // 预留流式容器，稍后由 getAIInterpretation 增量写入
+            html += `
+                <div class="ai-section">
+                    <div class="ai-label">🧠 AI 深度解读</div>
+                    <div class="ai-content"><span class="ai-loading">✨ 月影正在解读...</span></div>
+                </div>
+            `;
         }
 
         html += `</div>`;
 
         this.resultContainer.innerHTML = html;
         this.animateResult();
+
+        return withAI && !result.aiInterpretation
+            ? this.resultContainer.querySelector('.ai-content')
+            : null;
     }
 
     async displayAnswerResult(result) {

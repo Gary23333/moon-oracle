@@ -2,6 +2,7 @@ import { MoonConfig } from '../common/config.js';
 import { MoonAPI } from '../common/api.js';
 import { MoonUtils } from '../common/utils.js';
 import { MoonEffects } from '../common/effects.js';
+import { resolveTaskRoute } from '../common/routing.js';
 import { TAROT_IMAGE_FILES, getFullDeck } from '../tarot/cards-data.js';
 import { MoonHistory } from '../history/store.js';
 import { getQuoteByDate } from './quotes.js';
@@ -181,13 +182,29 @@ export const DailyTarotApp = {
         if (!MoonConfig.get('apiKey')) return;
 
         const aiBtn = document.getElementById('aiReadingBtn');
+        const aiReadingEl = document.getElementById('aiReading');
         if (aiBtn) {
             aiBtn.disabled = true;
             aiBtn.textContent = '解读中...';
         }
 
+        // 先展示容器（含流式内容子节点），再流式写入
+        let contentEl = null;
+        if (aiReadingEl) {
+            aiReadingEl.classList.remove('hidden');
+            aiReadingEl.innerHTML = '<div class="ai-reading-content"><span class="ai-loading">✨ 月影正在解读...</span></div>';
+            contentEl = aiReadingEl.querySelector('.ai-reading-content');
+        }
+
+        const route = resolveTaskRoute('daily');
+        const renderer = MoonUtils.createStreamRenderer(() => contentEl, {
+            showThinking: MoonConfig.get('showThinking')
+        });
+
         try {
-            const prompt = `你是月影，月影塔罗屋的占卜师。请为用户解读今日抽到的塔罗牌。
+            // 固定指令放 system，动态内容（卡片/牌义）放 user
+            const systemPrompt = '你是月影，月影塔罗屋的占卜师。用神秘、温暖、诗意的语言进行塔罗解读。';
+            const userMessage = `请为用户解读今日抽到的塔罗牌。
 
 【牌名】${card.name}(${card.orientation})
 【牌义】${this.state.reading.meaning}
@@ -200,15 +217,28 @@ export const DailyTarotApp = {
 4. 使用🌙✨🔮等符号点缀
 5. 结尾给一句温馨的寄语`;
 
-            const result = await MoonAPI.chatSingle(
-                '你是月影，月影塔罗屋的占卜师。用神秘、温暖、诗意的语言进行塔罗解读。',
-                prompt
+            const result = await MoonAPI.streamChat(
+                [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userMessage }
+                ],
+                route,
+                {
+                    onDelta: (text) => renderer.appendContent(text),
+                    onReasoning: (text) => renderer.appendReasoning(text)
+                }
             );
+            renderer.finish();
 
             this.state.aiReading = result.content;
             this.saveDailyData();
             this.renderAIReading();
         } catch (error) {
+            renderer.cancel();
+            if (!renderer.content && aiReadingEl) {
+                aiReadingEl.classList.add('hidden');
+                if (MoonConfig.get('apiKey') && aiBtn) aiBtn.classList.remove('hidden');
+            }
             console.error('AI解读失败:', error);
             MoonUtils.showToast('AI解读失败，请稍后再试');
         } finally {

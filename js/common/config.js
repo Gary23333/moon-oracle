@@ -2,9 +2,30 @@
 
 export const MoonConfig = {
     defaults: {
-        apiUrl: 'https://api.deepseek.com',
+        apiUrl: 'https://api.deepseek.com', // 兼容保留，新流程由 provider / customBaseUrl 解析
         apiKey: '',
-        model: 'deepseek-v4-flash', // DeepSeek 官方支持的模型，支持思考模式
+        provider: 'deepseek', // 厂商 id：deepseek（内置）或 custom（OpenAI 兼容）
+        model: 'deepseek-flash', // 全局默认模型（替代已废弃的 deepseek-v4-flash）
+        customBaseUrl: '', // provider === 'custom' 时使用的自定义地址
+        streaming: true, // 是否启用流式输出
+        models: { // 按任务分级的模型选择
+            reading: 'deepseek-v4-pro',
+            followup: 'deepseek-v4-pro',
+            generate: 'deepseek-flash',
+            vision: 'deepseek-flash',
+            quick: 'deepseek-flash',
+            daily: 'deepseek-flash'
+        },
+        thinkingByTask: { // 按任务分级的思考开关
+            reading: true,
+            followup: true,
+            generate: false,
+            vision: false,
+            quick: false,
+            daily: false,
+            interpret: false,
+            detail: false
+        },
         thinkingEnabled: true,
         thinkingEffort: 'high',
         showThinking: false,
@@ -56,6 +77,18 @@ export const MoonConfig = {
 
     current: {},
 
+    // 厂商 / 模型目录（供配置面板 UI 使用）
+    providers: [
+        { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com', models: ['deepseek-flash', 'deepseek-v4-pro'] },
+        { id: 'custom', name: '自定义 (OpenAI 兼容)', baseUrl: '', models: [] }
+    ],
+
+    /** 返回指定厂商可用的模型 id 列表（自定义厂商返回空数组）。 */
+    getModelsFor(providerId) {
+        const p = this.providers.find(item => item.id === providerId);
+        return p ? [...p.models] : [];
+    },
+
     init() {
         this.current = this.load();
         return this.current;
@@ -78,7 +111,34 @@ export const MoonConfig = {
         const saved = localStorage.getItem('moon_oracle_config');
         if (saved) {
             try {
-                return this._deepMerge(this.defaults, JSON.parse(saved));
+                const parsed = JSON.parse(saved);
+                // 先与默认值深合并，补齐所有缺失字段（含新增字段）
+                const merged = this._deepMerge(this.defaults, parsed);
+
+                // v3 → v4 迁移：修正已废弃的默认模型名（不覆盖用户自定义的其它字段）
+                if (parsed.model === 'deepseek-v4-flash') {
+                    merged.model = 'deepseek-flash';
+                }
+
+                // 防御性兜底：确保新增字段存在且类型正确
+                if (typeof merged.provider !== 'string' || !merged.provider) {
+                    merged.provider = this.defaults.provider;
+                }
+                if (typeof merged.customBaseUrl !== 'string') {
+                    merged.customBaseUrl = this.defaults.customBaseUrl;
+                }
+                if (typeof merged.streaming !== 'boolean') {
+                    merged.streaming = this.defaults.streaming;
+                }
+                if (!merged.models || typeof merged.models !== 'object') {
+                    merged.models = { ...this.defaults.models };
+                }
+                if (!merged.thinkingByTask || typeof merged.thinkingByTask !== 'object') {
+                    merged.thinkingByTask = { ...this.defaults.thinkingByTask };
+                }
+
+                // 保留用户已配置的 readerPersona / 提示词模板 / apiKey（deepMerge 已保证不丢失）
+                return merged;
             } catch (e) {
                 return { ...this.defaults };
             }

@@ -5,6 +5,7 @@ import { MoonAPI } from '../common/api.js';
 import { MoonUtils } from '../common/utils.js';
 import { MoonEffects } from '../common/effects.js';
 import { MoonPersona } from '../common/prompts.js';
+import { resolveTaskRoute } from '../common/routing.js';
 import { TAROT_IMAGE_FILES, getFullDeck } from './cards-data.js';
 import { getCategoryById } from './classifier.js';
 import { CATEGORY_SPREAD_RECOMMEND, getSpreadInfo } from './spreads.js';
@@ -328,40 +329,66 @@ export const TarotApp = {
     },
 
     async performReading() {
-        MoonUtils.showLoading('月影正在与命运对话...');
+        // 前置校验
+        if (!this.state.question || !this.state.category || !this.state.spreadType) {
+            MoonUtils.showToast('占卜数据不完整，请重新开始');
+            return;
+        }
+        if (!this.state.revealedCards || this.state.revealedCards.length === 0) {
+            MoonUtils.showToast('未选择任何牌');
+            return;
+        }
+
+        const spread = getSpreadInfo(this.state.spreadType);
+        const context = {
+            question: this.state.question,
+            category: getCategoryById(this.state.category).name,
+            spreadType: this.state.spreadType,
+            spreadName: spread.name,
+            details: this.state.details,
+            cards: this.state.revealedCards.map((card, i) => ({
+                id: card.id,
+                position: spread.positions[i],
+                name: card.name,
+                orientation: card.orientation,
+                keywords: card.orientation === '正位' ? card.uprightKeywords : card.reversedKeywords
+            }))
+        };
+
+        // 稳定前缀在最前，动态内容在最后，最大化前缀缓存命中
+        const personaType = MoonConfig.get('readerPersona');
+        const systemPrompt = MoonPersona.getStablePrefix(personaType)
+            + '\n\n' + TAROT_PROMPTS.readingTemplate()
+            + '\n\n' + TAROT_PROMPTS.getReadingDynamic(context);
+        // 1.2: 保存系统提示词用于追问上下文
+        this.state.readingSystemPrompt = systemPrompt;
+
+        const userMessage = `请为我解读这次塔罗占卜。我的问题是：${this.state.question}`;
+        const messages = [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage }
+        ];
+
+        // 先渲染牌面并切到结果视图，再流式写入解读（首字即时可见）
+        this.renderResultCards();
+        const followupHistory = this._safeGetElement('followupHistory');
+        if (followupHistory) followupHistory.innerHTML = '';
+        this.showView('result');
+
+        const resultText = this._safeGetElement('resultText');
+        if (resultText) resultText.innerHTML = '<div class="reading-loading">✨ 月影正在与命运对话...</div>';
+
+        const route = resolveTaskRoute('reading');
+        const renderer = MoonUtils.createStreamRenderer(() => this._safeGetElement('resultText'), {
+            showThinking: MoonConfig.get('showThinking')
+        });
 
         try {
-            if (!this.state.question || !this.state.category || !this.state.spreadType) {
-                throw new Error('占卜数据不完整，请重新开始');
-            }
-            if (!this.state.revealedCards || this.state.revealedCards.length === 0) {
-                throw new Error('未选择任何牌');
-            }
-
-            const spread = getSpreadInfo(this.state.spreadType);
-            const context = {
-                question: this.state.question,
-                category: getCategoryById(this.state.category).name,
-                spreadType: this.state.spreadType,
-                spreadName: spread.name,
-                details: this.state.details,
-                cards: this.state.revealedCards.map((card, i) => ({
-                    position: spread.positions[i],
-                    name: card.name,
-                    orientation: card.orientation,
-                    keywords: card.orientation === '正位' ? card.uprightKeywords : card.reversedKeywords
-                }))
-            };
-
-            const personaType = MoonConfig.get('readerPersona');
-            const personaPrompt = MoonPersona.getPersonaPrompt(personaType);
-            const basePrompt = TAROT_PROMPTS.getReading(context);
-            const systemPrompt = `${personaPrompt}\n\n${basePrompt}`;
-            // 1.2: 保存系统提示词用于追问上下文
-            this.state.readingSystemPrompt = systemPrompt;
-            const userMessage = `请为我解读这次塔罗占卜。我的问题是：${this.state.question}`;
-
-            const result = await MoonAPI.chatSingle(systemPrompt, userMessage, { thinking: true });
+            const result = await MoonAPI.streamChat(messages, route, {
+                onDelta: (text) => renderer.appendContent(text),
+                onReasoning: (text) => renderer.appendReasoning(text)
+            });
+            renderer.finish();
 
             this.state.readingResult = result.content;
             this.state.conversationHistory = [
@@ -369,35 +396,14 @@ export const TarotApp = {
                 { role: 'user', content: userMessage },
                 { role: 'assistant', content: result.content, thinking: result.thinking }
             ];
-
-            MoonUtils.hideLoading();
-            this.showResult(result);
         } catch (error) {
-            MoonUtils.hideLoading();
+            renderer.cancel();
+            if (!renderer.content && resultText) {
+                resultText.innerHTML = '<div class="reading-error">抱歉，月影暂时无法解读。请稍后再试。</div>';
+            }
             MoonUtils.showToast('占卜失败: ' + error.message);
             console.error('Reading error:', error);
         }
-    },
-
-    showResult(result) {
-        // 渲染牌面
-        this.renderResultCards();
-
-        // 显示解读文本
-        const resultText = this._safeGetElement('resultText');
-        if (resultText) {
-            if (MoonConfig.get('showThinking') && result.thinking) {
-                resultText.innerHTML = `<div class="thinking-box"><strong>月影的思考过程：</strong><br>${MoonUtils.formatText(result.thinking)}</div><hr>${MoonUtils.formatText(result.content)}`;
-            } else {
-                resultText.innerHTML = MoonUtils.formatText(result.content);
-            }
-        }
-
-        // 清空追问历史
-        const followupHistory = this._safeGetElement('followupHistory');
-        if (followupHistory) followupHistory.innerHTML = '';
-
-        this.showView('result');
     },
 
     renderResultCards() {
@@ -470,19 +476,35 @@ export const TarotApp = {
         const btn = this._safeGetElement('followupBtn');
         if (btn) { btn.disabled = true; btn.textContent = '思考中...'; }
 
+        // 1.2: 用完整的阅读系统提示词保持上下文；缺失时回退到稳定前缀 + 追问模板 + 动态块
+        const fallbackSystem = () => MoonPersona.getStablePrefix(MoonConfig.get('readerPersona'))
+            + '\n\n' + TAROT_PROMPTS.followupTemplate()
+            + '\n\n' + TAROT_PROMPTS.getFollowupDynamic({
+                question: this.state.question,
+                previousReading: this.state.readingResult,
+                spreadType: getSpreadInfo(this.state.spreadType).name
+            });
+
+        // 先创建助手气泡，再流式写入
+        const bubble = this._createFollowupBubble('assistant');
+        const route = resolveTaskRoute('followup');
+        const renderer = MoonUtils.createStreamRenderer(() => bubble, {
+            showThinking: MoonConfig.get('showThinking')
+        });
+
         try {
-            // 1.2: 用完整的阅读系统提示词保持上下文，而非丢失牌义的简化版
             const messages = [
-                { role: 'system', content: this.state.readingSystemPrompt || TAROT_PROMPTS.getFollowup({
-                    question: this.state.question,
-                    previousReading: this.state.readingResult,
-                    spreadType: getSpreadInfo(this.state.spreadType).name
-                })},
+                { role: 'system', content: this.state.readingSystemPrompt || fallbackSystem() },
                 ...this.state.conversationHistory.filter(m => m.role !== 'system'),
                 { role: 'user', content: question }
             ];
 
-            const result = await MoonAPI.chat(messages);
+            const result = await MoonAPI.streamChat(messages, route, {
+                onDelta: (text) => renderer.appendContent(text),
+                onReasoning: (text) => renderer.appendReasoning(text)
+            });
+            renderer.finish();
+
             this.state.conversationHistory.push({ role: 'user', content: question });
             this.state.conversationHistory.push({ role: 'assistant', content: result.content, thinking: result.thinking });
 
@@ -490,16 +512,30 @@ export const TarotApp = {
             if (this.state.conversationHistory.length > maxHistory) {
                 this.state.conversationHistory = this.state.conversationHistory.slice(-maxHistory);
             }
-
-            // 2.6: 追问也显示思考过程
-            this.addFollowupMessage('assistant', result.content, result.thinking);
         } catch (error) {
-            this.addFollowupMessage('assistant', '抱歉，暂时无法回答。请稍后再试。');
+            renderer.cancel();
+            if (!renderer.content && bubble) {
+                bubble.innerHTML = '抱歉，暂时无法回答。请稍后再试。';
+            }
             console.error('Followup error:', error);
         } finally {
             this.state.followupLoading = false;
             if (btn) { btn.disabled = false; btn.textContent = '追问'; }
         }
+    },
+
+    // 创建一条追问消息气泡，返回其内容元素（供流式渲染使用）
+    _createFollowupBubble(role) {
+        const history = this._safeGetElement('followupHistory');
+        if (!history) return null;
+        const msg = document.createElement('div');
+        msg.className = `followup-message ${role}`;
+        const contentEl = document.createElement('div');
+        contentEl.className = 'followup-content';
+        msg.appendChild(contentEl);
+        history.appendChild(msg);
+        history.scrollTop = history.scrollHeight;
+        return contentEl;
     },
 
     // 2.6: 支持 thinking 参数

@@ -117,6 +117,39 @@
 - **AI 解牌人格** — 严肃智者、温柔疗愈、毒舌好友三种解读风格
 - **首页五入口矩阵** — 塔罗占卜、命运转盘、每日塔罗、快占·答案之书、占卜历史
 
+## [4.0.0] - 2026-10-20
+
+### 🔧 重构 (Refactored)
+- **新增轻量后端代理（BREAKING）** — 引入 `server/`（Node 原生 http，**零第三方依赖**），托管构建后的 `dist/` 静态资源并暴露 `POST /api/chat` 代理
+  - `server/index.js` — 生产服务器：加载 `.env`（尽力而为，缺失不报错），支持 `PORT` 环境变量（默认 3000）
+  - `server/app.js` — 框架无关的 `handleChat(req, res)`：转发至上游 OpenAI 兼容 `/chat/completions`，以 SSE（`text/event-stream`，含 `reasoning_content` 分片）流式回传，服务端注入 API Key，将上游错误码（401/403/404/429/5xx）映射为友好中文提示，且绝不泄露密钥
+  - `server/providers.js` — 厂商注册表：内置 `deepseek`（`https://api.deepseek.com`，模型 `deepseek-flash` / `deepseek-v4-pro`）+ `custom`（客户端提供的 OpenAI 兼容 baseUrl）；密钥解析顺序为「客户端 BYOK 兜底 → 厂商环境变量」，均缺失时返回结构化 `{error:{code:'missing_api_key',...}}` 401
+  - 开发环境由 `vite.config.js` 挂载同一 `handleChat` 于 `/api`，`npm run dev` 一条命令即可前后端联调
+- **部署方式变更（BREAKING）** — 应用不再是可以直接托管到 GitHub Pages 的纯静态站点，运行时需要一个 Node 环境（如 Render / Railway / Fly.io / VPS）来运行代理并托管 `dist`；启动流程为 `npm run build && npm start`
+- **OCR 迁移至 DeepSeek Vision 多模态** — 移除 `tesseract.js` 依赖，截图识别改为向视觉模型发送 base64 图像的 content part，保留类型/尺寸校验与友好错误提示，并保留文本提取兜底
+- **统一配置面板** — 抽离为 `js/common/config-panel.js`，在全部 6 个页面（index / tarot / wheel / daily / quick / history）自动挂载（此前仅 index.html 有）
+- **配置迁移 v3 → v4** — 自动将废弃别名 `deepseek-v4-flash` 迁移为 `deepseek-flash`
+
+### ✨ 新增 (Added)
+- **多厂商 OpenAI 兼容支持** — DeepSeek 预设 + 自定义端点，配置面板提供厂商与模型选择器
+- **新模型** — `deepseek-flash`（= DeepSeek-V4.1-Flash-1017，原生多模态，更快更省）与 `deepseek-v4-pro`（= V4-Pro-0813，深度推理）；默认模型由废弃别名 `deepseek-v4-flash` 迁移至 `deepseek-flash`（旧别名仍被接受但路由至 V4.1-Flash）；`deepseek-chat` / `deepseek-reasoner` 已废弃（2026-07-24）
+- **新配置字段** — `provider`、`customBaseUrl`、`streaming`、`models`（按任务模型映射）、`thinkingByTask`（按任务思考开关），与既有 `apiKey` / `thinkingEnabled` / `thinkingEffort` / `showThinking` / `wheelResultAI` / `readerPersona` / 提示词模板并存
+- **新增脚本** — `start`（`node server/index.js`），与既有 `dev` / `build` / `preview` 并存
+- **环境变量** — 新增 `.env.example`（`DEEPSEEK_API_KEY=sk-...`，并说明自定义厂商密钥），`.env` 已加入 `.gitignore`
+
+### ⚡ 性能 / 提速 (Performance)
+- **SSE 流式增量渲染** — 面向用户的所有 AI 文本（塔罗解读/追问、每日 AI 解读、快占 AI 增强、转盘结果解读）改为流式渲染，首字即时呈现，并可通过 `AbortController` 取消
+- **提示词缓存优化** — 将稳定且逐字节一致的 system-prompt 前缀（人格 + 格式模板）置于最前，命中厂商上下文缓存
+- **模型分级路由** — 简单/结构化任务（转盘生成/位置/电影、Vision OCR、快占增强、结果解读、每日）使用快速模型并关闭思考；深度任务（塔罗完整解读 + 追问）使用 `deepseek-v4-pro` 并携带 `reasoning_effort`（默认 `high`）；路由可配置
+- **提示词瘦身** — 塔罗提示词不再注入完整 78 张牌义表，仅注入所抽牌面的牌义
+
+### 🗑 移除 (Removed)
+- 移除 `tesseract.js` 依赖（OCR 改由 DeepSeek Vision 多模态承担）
+
+### 📝 文档 (Docs)
+- README 更新架构说明、快速开始、配置项、LLM 调用策略与部署方式
+- API 文档改为以 `POST /api/chat` 代理为主接口
+
 ## [Unreleased]
 
 ### 🗺 计划中 (Planned)
@@ -124,6 +157,7 @@
 - PWA 离线支持
 - 更多牌阵和主题皮肤
 
+[4.0.0]: https://github.com/Gary23333/moon-oracle/compare/v3.0.0...v4.0.0
 [3.0.0]: https://github.com/Gary23333/moon-oracle/compare/v2.1.0...v3.0.0
 [2.1.0]: https://github.com/Gary23333/moon-oracle/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/Gary23333/moon-oracle/compare/v1.0.0...v2.0.0

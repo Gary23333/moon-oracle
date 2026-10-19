@@ -2,39 +2,50 @@
 
 ## 概述
 
-月影决策屋是一个纯前端应用，通过 DeepSeek API 实现塔罗占卜解读和智能转盘生成。本文档描述了应用使用的所有 API 接口。
+月影决策屋由「前端应用 + 轻量后端代理」两部分组成：
+
+- **前端**：原生 JS 多页应用（`*.html` + `js/**`），所有 AI 调用统一走 **`POST /api/chat`** 代理。
+- **后端代理**（`server/`，Node 原生 http，**零第三方依赖**）：托管构建后的 `dist/` 静态资源，并暴露 `/api/chat`，负责转发至上游 OpenAI 兼容端点、以 SSE 流式回传、**在服务端注入 API Key**、并把上游错误码映射为友好中文提示。
+
+前端不再直接持有密钥发起跨域请求；密钥由服务端（环境变量）注入，浏览器端 BYOK 仅作本地开发兜底。
 
 ---
 
-## 1. DeepSeek Chat Completions API
+## 1. 后端代理接口 `POST /api/chat`
 
 ### 端点
 
 ```
-POST {apiUrl}/chat/completions
+POST /api/chat
 ```
 
-默认 `apiUrl` 为 `https://api.deepseek.com`
+- 生产：由 `server/index.js`（`npm start`）提供。
+- 开发：由 `vite.config.js` 在 `/api` 挂载同一处理器（`npm run dev`）。
 
 ### 请求头
 
 ```
 Content-Type: application/json
-Authorization: Bearer {apiKey}
 ```
+
+> 代理自身的鉴权在服务端完成，无需在请求头中携带 `Authorization`。
 
 ### 请求体
 
 ```json
 {
-  "model": "deepseek-v4-flash",
+  "provider": "deepseek",
+  "baseUrl": "",
+  "apiKey": "sk-xxx",
+  "model": "deepseek-flash",
   "messages": [
     {"role": "system", "content": "系统提示词"},
     {"role": "user", "content": "用户消息"}
   ],
-  "stream": false,
-  "thinking": {"type": "enabled"},
-  "reasoning_effort": "high"
+  "stream": true,
+  "thinking": true,
+  "reasoning_effort": "high",
+  "timeout": 120000
 }
 ```
 
@@ -42,22 +53,43 @@ Authorization: Bearer {apiKey}
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| model | string | 是 | 模型名称，如 `deepseek-v4-flash` |
-| messages | array | 是 | 消息数组 |
-| stream | boolean | 否 | 是否流式输出，默认 `false` |
-| thinking | object | 否 | 思考模式配置，`{"type": "enabled"}` 或 `{"type": "disabled"}` |
-| reasoning_effort | string | 否 | 思考强度，`"high"` 或 `"max"` |
+| `provider` | string | 否 | 厂商 id：`deepseek`（默认，内置）或 `custom`（OpenAI 兼容） |
+| `baseUrl` | string | 条件 | `provider === "custom"` 时的上游基址；内置厂商不必传 |
+| `apiKey` | string | 否 | 客户端自带密钥（BYOK 兜底）；**服务端优先使用环境变量**，浏览器端仅作为本地开发兜底 |
+| `model` | string | 否 | 模型名，缺省取该厂商首个模型（`deepseek-flash`） |
+| `messages` | array | 是 | 消息数组；支持纯文本，也支持 Vision 图文（`content` 为数组） |
+| `stream` | boolean | 否 | 是否以 SSE 流式返回，默认 `false` |
+| `thinking` | boolean | 否 | 是否开启思考模式；仅当为 `true` 时上游附加 `thinking:{"type":"enabled"}` 与 `reasoning_effort` |
+| `reasoning_effort` | string | 否 | 思考强度，`"high"`（默认）或 `"max"` |
+| `timeout` | number | 否 | 上游请求超时毫秒数（如 `120000`）。超时或客户端断开都会中止上游请求 |
 
 > **注意**：思考模式不支持 `temperature`、`top_p`、`presence_penalty`、`frequency_penalty` 参数。
+>
+> ---
+>
+> ### 厂商（provider）解析与服务端密钥
+>
+> 服务端通过 `server/providers.js` 解析厂商信息，密钥解析顺序为：
+>
+> 1. **客户端自带 `apiKey`（BYOK 兜底）**
+> 2. **服务端环境变量**：内置 `deepseek` 读取 `DEEPSEEK_API_KEY`；`custom` 默认读取 `OPENAI_API_KEY`（未设置时可用任意匹配变量名）
+>
+> 两者均缺失时返回结构化 `401`（`code: "missing_api_key"`）。上游请求头 `Authorization: Bearer <key>` 由**服务端**组装，密钥不会下发到浏览器，且错误信息中的密钥会被掩码为 `***`。
+>
+> 内置厂商：`deepseek`（`https://api.deepseek.com`，模型 `deepseek-flash` / `deepseek-v4-pro`）。
 
 ### 响应体
+
+#### 非流式（`stream: false`）
+
+原样透传上游 JSON：
 
 ```json
 {
   "id": "chatcmpl-xxx",
   "object": "chat.completion",
   "created": 1234567890,
-  "model": "deepseek-v4-flash",
+  "model": "deepseek-flash",
   "choices": [
     {
       "index": 0,
@@ -77,49 +109,89 @@ Authorization: Bearer {apiKey}
 }
 ```
 
+#### 流式（`stream: true`）
+
+响应头：
+
+```
+Content-Type: text/event-stream; charset=utf-8
+Cache-Control: no-cache
+Connection: keep-alive
+```
+
+代理以 SSE 原样透传上游分片，每个事件形如：
+
+```
+data: {"choices":[{"delta":{"content":"逐字内容"}}]}
+
+data: {"choices":[{"delta":{"reasoning_content":"思考过程分片"}}]}
+
+data: [DONE]
+```
+
+- `choices[0].delta.content` — 正文增量
+- `choices[0].delta.reasoning_content` — 思考过程增量（仅思考模式）
+- 末帧固定为 `data: [DONE]`
+
 #### 响应字段说明
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| choices[0].message.content | string | 模型的最终回答 |
-| choices[0].message.reasoning_content | string | 思考过程（仅开启思考模式时返回） |
-| usage | object | token 使用量 |
+| `choices[0].message.content` | string | 非流式：模型的最终回答 |
+| `choices[0].message.reasoning_content` | string | 非流式：思考过程（仅开启思考模式时返回） |
+| `choices[0].delta.content` | string | 流式：正文增量 |
+| `choices[0].delta.reasoning_content` | string | 流式：思考过程增量 |
+| `usage` | object | token 使用量 |
+
+### 错误响应
+
+统一格式：
+
+```json
+{
+  "error": {
+    "message": "错误描述",
+    "code": "missing_api_key"
+  }
+}
+```
+
+常见 `code`：`missing_api_key`、`missing_base_url`、`missing_model`、`invalid_messages`、`invalid_json`、`method_not_allowed`、`bad_request`（含请求体过大）、`upstream_error`、`upstream_unreachable`、`upstream_timeout`、`internal_error`。
 
 ---
 
-## 2. 塔罗占卜接口调用
+## 2. 各功能调用方式
 
-### 2.1 占卜解读
+所有调用均通过 `js/common/api.js` 的 `MoonAPI`（`chat` / `streamChat` / `chatSingle`）发起，最终都落到 `POST /api/chat`。模型与思考开关由 `js/common/routing.js` 按任务分级解析。
+
+### 2.1 塔罗占卜解读（流式）
 
 **触发时机**：用户选牌并补充细节后
 
-**系统提示词**：包含完整的牌义参考、牌阵信息、用户问题和细节
+**路由**：模型 `deepseek-v4-pro`，思考开启，流式
+
+**系统提示词**：包含所抽牌面的牌义、牌阵信息、用户问题和细节（提示词已瘦身：不再注入完整 78 张牌义表，仅注入所抽牌义）
 
 **调用方式**：
 
 ```javascript
-const result = await MoonAPI.chatSingle(systemPrompt, userMessage, { thinking: true });
-// result.content - 解读文本
+const result = await MoonAPI.streamChat(messages, { model: 'deepseek-v4-pro', thinking: true }, {
+  onDelta: (text) => { /* 增量渲染正文 */ },
+  onReasoning: (text) => { /* 增量渲染思考过程 */ }
+});
+// result.content  - 解读文本
 // result.thinking - 思考过程
 ```
 
-**输入内容**：
-- 用户问题
-- 问题分类（情感/事业/财运等）
-- 牌阵类型和各位置含义
-- 每张牌的名称、正逆位、关键词
-- 用户补充的细节
+**输入内容**：用户问题、问题分类、牌阵类型与各位置含义、每张牌的名称/正逆位/关键词、用户补充细节
 
-**输出内容**：
-- 逐张牌解读（牌面意象、位置含义、结合细节的解读）
-- 整体综合解读
-- 关键启示（3个要点）
-- 建议与指引
-- 月影寄语
+**输出内容**：逐张牌解读、整体综合解读、关键启示（3 点）、建议与指引、月影寄语
 
-### 2.2 追问功能
+### 2.2 塔罗追问（流式）
 
 **触发时机**：用户在结果页输入追问
+
+**路由**：模型 `deepseek-v4-pro`，思考开启，流式
 
 **调用方式**：
 
@@ -129,18 +201,16 @@ const messages = [
   ...conversationHistory,
   { role: 'user', content: userQuestion }
 ];
-const result = await MoonAPI.chat(messages);
+const result = await MoonAPI.streamChat(messages, { model: 'deepseek-v4-pro', thinking: true }, { onDelta });
 ```
 
 **上下文维护**：通过 `conversationHistory` 数组维护多轮对话
 
----
-
-## 3. 转盘 AI 生成接口
-
-### 3.1 一句话生成转盘
+### 2.3 转盘 AI 生成（结构化 JSON，非流式）
 
 **触发时机**：用户输入一句话描述并点击"AI生成"
+
+**路由**：模型 `deepseek-flash`，思考关闭，**非流式**（需解析完整 JSON）
 
 **系统提示词**：
 
@@ -155,7 +225,7 @@ const result = await MoonAPI.chat(messages);
 **响应解析**：
 1. 从响应中提取 JSON 对象（正则匹配 `{...}`）
 2. 验证 `options` 数组存在且长度 >= 2
-3. 截取前12个选项
+3. 截取前 12 个选项
 
 **调用方式**：
 
@@ -168,15 +238,13 @@ if (result.success) {
 }
 ```
 
----
-
-## 4. 高级功能 API
-
-### 4.1 OCR 截图识别
+### 2.4 OCR 截图识别（DeepSeek Vision 多模态，非流式）
 
 **用途**：从截图中识别文字，自动生成转盘选项
 
-**实现方式**：Tesseract.js 浏览器端 OCR，无需后端服务
+**实现方式**：向视觉模型（`deepseek-flash`）发送 **base64 图像的 content part**，由多模态模型直接读数；保留图片类型/尺寸校验与友好错误提示，并保留文本提取兜底。**已移除 Tesseract.js，无 CDN 依赖。**
+
+**路由**：模型 `deepseek-flash`，思考关闭，非流式
 
 **调用方式**：
 
@@ -188,15 +256,25 @@ const result = await WheelAIGenerator.fromOCR(imageFile);
 // 失败: { success: false, error: string, rawText?: string }
 ```
 
-**流程**：
-1. 按需从 CDN 加载 Tesseract.js（首次约 2MB）
-2. 使用 `chi_sim+eng` 语言包识别中英文
-3. 多策略提取选项：行分割 → 去行号前缀 → 逗号分割
-4. 返回 2-12 个选项
+**图文消息构造**（`MoonAPI.buildVisionMessage`）：
 
-### 4.2 附近美食双转盘
+```javascript
+{
+  role: 'user',
+  content: [
+    { type: 'text', text: '请从图中提取选项...' },
+    { type: 'image_url', image_url: { url: '<base64 data URL>', detail: 'auto' } }
+  ]
+}
+```
+
+**流程**：类型/尺寸校验 → 转 base64 data URL → 构造 Vision 消息 → 提取/清洗选项（去行号前缀、逗号分割）→ 返回 2-12 个选项
+
+### 2.5 附近美食双转盘（结构化 JSON，非流式）
 
 **用途**：基于用户位置推荐附近餐厅，双转盘级联选择
+
+**路由**：模型 `deepseek-flash`，思考关闭，非流式
 
 **调用方式**：
 
@@ -213,13 +291,15 @@ const detail = await WheelAIGenerator.fromLocationDetail(cuisine, coords);
 
 **流程**：
 1. `navigator.geolocation.getCurrentPosition()` 获取坐标
-2. 坐标发送给 DeepSeek，AI 推荐当地菜系（转盘1）
+2. 坐标发送给 AI，推荐当地菜系（转盘1）
 3. 用户选择菜系后，再次调用 AI 推荐具体餐厅（转盘2）
 4. 定位被拒绝时，降级为通用美食推荐
 
-### 4.3 电影推荐
+### 2.6 电影推荐（结构化 JSON，非流式）
 
 **用途**：AI 生成热门/经典电影推荐转盘
+
+**路由**：模型 `deepseek-flash`，思考关闭，非流式
 
 **调用方式**：
 
@@ -229,130 +309,72 @@ const result = await WheelAIGenerator.getMovies(genre);
 // 返回：{ success: true, data: { name, icon, options } }
 ```
 
-### 4.4 转盘结果 AI 解读
+### 2.7 转盘结果 AI 解读（流式）
 
 **用途**：转盘出结果后，调用 AI 做趣味解读
+
+**路由**：模型 `deepseek-flash`，思考关闭，流式
 
 **调用方式**：
 
 ```javascript
-const result = await WheelAIGenerator.interpretResult(wheelName, resultOption);
+const result = await WheelAIGenerator.interpretResult(wheelName, resultOption, { onDelta });
 // 参数：wheelName - 转盘名称, resultOption - 命运选择的结果
 // 返回：{ success: true, content: string }
 ```
 
 **触发条件**：配置项 `wheelResultAI` 为 `true` 时自动调用
 
----
+### 2.8 每日塔罗（流式）
 
-## 5. 每日塔罗 API 调用
-
-### 5.1 日期种子算法
-
-**用途**：根据日期生成固定的塔罗牌面，无需 API 调用
-
-**实现方式**：
+**日期种子算法**：根据日期生成固定牌面，无需 API 调用
 
 ```javascript
-// 日期哈希生成种子
 const seed = Date.now() / (1000 * 60 * 60 * 24) | 0;
-// 使用 seed 选择牌和正逆位
 const cardIndex = seed % 78;
 const isReversed = (seed % 10) >= 5;
 ```
 
-**特点**：
-- 同一天访问始终返回相同牌面
-- 完全纯前端，无需 API
-- 支持 Streak 连续打卡统计
-
-### 5.2 AI 解读（可选）
-
-**触发时机**：用户点击"AI 解读"按钮
-
-**系统提示词**：包含日期、牌面信息、40 条语录之一
-
-**调用方式**：
+**AI 解读（可选，流式）**：用户点击"AI 解读"按钮时，模型 `deepseek-flash`、思考关闭、流式；输入为当前日期、牌面名称/正逆位、关键词与当日语录；输出为今日运势概述、牌面解读、行动建议、能量指引。
 
 ```javascript
-const result = await MoonAPI.chatSingle(dailyPrompt, userMessage, { thinking: true });
-// result.content - 解读文本
-// result.thinking - 思考过程
+const result = await MoonAPI.streamChat(messages, { model: 'deepseek-flash', thinking: false }, { onDelta });
 ```
 
-**输入内容**：
-- 当前日期
-- 抽到的牌名称、正逆位
-- 牌义关键词
-- 当日语录
+### 2.9 快占·答案之书（流式增强）
 
-**输出内容**：
-- 今日运势概述
-- 牌面解读
-- 行动建议
-- 能量指引
-
----
-
-## 6. 快占·答案之书 API 调用
-
-### 6.1 牌义加权算法
-
-**用途**：根据牌义倾向计算 Yes/No 概率，无需 API 调用
-
-**实现方式**：
+**牌义加权算法**：根据牌义倾向计算 Yes/No 概率，无需 API 调用
 
 ```javascript
-// 每张牌有加权分数：正位倾向、逆位倾向
-// 随机抽牌后计算最终倾向
 const card = drawRandomCard();
 const weight = card.reversed ? card.reverseWeight : card.uprightWeight;
-// 根据权重从 193 条答案中选择
 const answer = selectAnswer(weight);
 ```
 
-**特点**：
-- 完全纯前端，无需 API
-- 193 条答案覆盖各种倾向
-- 支持正逆位概率调整
-
-### 6.2 AI 增强（可选）
-
-**触发时机**：用户点击"AI 深度解读"按钮
-
-**系统提示词**：包含牌面信息、答案文本、用户问题
-
-**调用方式**：
+**AI 增强（可选，流式）**：用户点击"AI 深度解读"按钮时，模型 `deepseek-flash`、思考关闭、流式；输入为用户问题、牌面名称/正逆位、答案文本与关键词；输出为深度解读、结合问题的分析与建议指引。
 
 ```javascript
-const result = await MoonAPI.chatSingle(quickPrompt, userMessage, { thinking: false });
-// result.content - 增强解读文本
+const result = await MoonAPI.streamChat(messages, { model: 'deepseek-flash', thinking: false }, { onDelta });
 ```
-
-**输入内容**：
-- 用户问题
-- 抽到的牌名称、正逆位
-- 答案文本
-- 牌义关键词
-
-**输出内容**：
-- 深度解读
-- 结合问题的分析
-- 建议与指引
 
 ---
 
-## 8. 错误处理
+## 3. 错误处理
 
 ### HTTP 状态码
 
 | 状态码 | 说明 |
 |--------|------|
 | 200 | 成功 |
-| 400 | 请求参数错误 |
-| 401 | API Key 无效 |
+| 400 | 请求参数错误（JSON 非法、缺少 messages 等） |
+| 401 | API Key 缺失或无效 |
+| 403 | 上游额度不足 / 权限受限 |
+| 404 | 上游接口不存在（API 地址配置错误） |
+| 405 | 仅支持 POST |
+| 413 | 请求体过大 |
 | 429 | 请求频率超限 |
 | 500 | 服务器内部错误 |
+| 502 / 504 | 无法连接上游 / 上游超时或已取消 |
 
 ### 错误响应格式
 
@@ -360,8 +382,7 @@ const result = await MoonAPI.chatSingle(quickPrompt, userMessage, { thinking: fa
 {
   "error": {
     "message": "错误描述",
-    "type": "invalid_request_error",
-    "code": "invalid_api_key"
+    "code": "missing_api_key"
   }
 }
 ```
@@ -370,45 +391,59 @@ const result = await MoonAPI.chatSingle(quickPrompt, userMessage, { thinking: fa
 
 ```javascript
 try {
-  const result = await MoonAPI.chat(messages);
+  const result = await MoonAPI.streamChat(messages, { thinking: true }, { onDelta });
 } catch (error) {
   if (error.message.includes('401')) {
     // API Key 无效
   } else if (error.message.includes('429')) {
     // 请求过于频繁
-  } else if (error.name === 'AbortError') {
-    // 请求超时或被取消
+  } else if (error.message.includes('取消') || error.message.includes('超时')) {
+    // 请求超时或被取消（AbortController）
   }
 }
 ```
 
 ---
 
-## 9. 配置项说明
+## 4. 配置项说明
 
 所有配置存储在 `localStorage` 的 `moon_oracle_config` 键中。
 
 ```json
 {
+  "provider": "deepseek",
+  "model": "deepseek-flash",
+  "customBaseUrl": "",
   "apiUrl": "https://api.deepseek.com",
   "apiKey": "sk-xxx",
-  "model": "deepseek-v4-flash",
+  "streaming": true,
+  "models": {
+    "reading": "deepseek-v4-pro",
+    "followup": "deepseek-v4-pro",
+    "generate": "deepseek-flash",
+    "vision": "deepseek-flash",
+    "quick": "deepseek-flash",
+    "daily": "deepseek-flash"
+  },
+  "thinkingByTask": {
+    "reading": true,
+    "followup": true,
+    "generate": false,
+    "quick": false,
+    "daily": false,
+    "interpret": false
+  },
   "thinkingEnabled": true,
   "thinkingEffort": "high",
   "showThinking": false,
   "typingSpeed": 30,
-  "readerPersona": "严肃智者",
+  "readerPersona": "gentle",
   "wheelResultAI": false,
   "tarotPrompts": {
     "greeting": "问候提示词",
     "reading": "解读提示词",
     "followup": "追问提示词",
-    "detailQuestion": "细节追问词",
-    "persona": {
-      "严肃智者": "正统神秘学风格",
-      "温柔疗愈": "温暖关怀式",
-      "毒舌好友": "幽默犀利风格"
-    }
+    "detailQuestion": "细节追问词"
   },
   "wheelPrompts": {
     "generate": "转盘生成提示词",
@@ -426,33 +461,35 @@ try {
 }
 ```
 
+> `apiKey` 为浏览器端 BYOK 兜底项：服务端已配置环境变量时不会使用。`models` / `thinkingByTask` 为按任务分级的路由配置。
+
 ---
 
-## 10. 调用频率与限制
+## 5. 调用频率与限制
 
-| 功能 | 调用频率 | 思考模式 | 说明 |
-|------|---------|---------|------|
-| 塔罗占卜 | 1 次 | ✅ | 含完整牌义上下文 |
-| 塔罗追问 | 每次 1 次 | ✅ | 保持占卜上下文 |
-| 每日塔罗 | 0~1 次 | ✅ | 纯前端日期种子，可选 AI 解读 |
-| 快占·答案之书 | 0~1 次 | ❌ | 纯前端牌义加权，可选 AI 增强 |
-| 转盘 AI 生成 | 1 次 | ❌ | 响应较快 |
-| OCR 识别 | 0 次 | — | Tesseract.js 浏览器端 |
-| 附近美食 | 2 次 | ❌ | 菜系 + 餐厅 |
-| 电影推荐 | 1 次 | ❌ | AI 生成电影列表 |
-| 结果 AI 解读 | 1 次 | ❌ | 需开启 wheelResultAI |
-| 预设/自定义转盘 | 0 次 | — | 纯前端 |
+| 功能 | 调用频率 | 模型 | 思考模式 | 流式 | 说明 |
+|------|---------|------|---------|------|------|
+| 塔罗占卜 | 1 次 | `deepseek-v4-pro` | ✅ | ✅ | 仅注入所抽牌义 |
+| 塔罗追问 | 每次 1 次 | `deepseek-v4-pro` | ✅ | ✅ | 保持占卜上下文 |
+| 每日塔罗 | 0~1 次 | `deepseek-flash` | ❌ | ✅ | 纯前端日期种子，可选 AI 解读 |
+| 快占·答案之书 | 0~1 次 | `deepseek-flash` | ❌ | ✅ | 纯前端牌义加权，可选 AI 增强 |
+| 转盘 AI 生成 | 1 次 | `deepseek-flash` | ❌ | ❌ | 结构化 JSON |
+| OCR 识别 | 1 次 | `deepseek-flash` | ❌ | ❌ | Vision 多模态（图像 content part） |
+| 附近美食 | 2 次 | `deepseek-flash` | ❌ | ❌ | 菜系 + 餐厅（结构化 JSON） |
+| 电影推荐 | 1 次 | `deepseek-flash` | ❌ | ❌ | AI 生成电影列表 |
+| 结果 AI 解读 | 1 次 | `deepseek-flash` | ❌ | ✅ | 需开启 `wheelResultAI` |
+| 预设/自定义转盘 | 0 次 | — | — | — | 纯前端 |
 
 **建议**：
 - 添加请求频率限制（如 10 次/分钟）
-- 对长时间请求添加超时处理（建议 120 秒）
-- 使用 AbortController 支持请求取消
+- 上游超时建议 120 秒（前端 `timeout` 默认 120000）
+- 使用 `AbortController` 支持请求取消；前端已做网络级失败有限重试
 
 ---
 
-## 11. 安全注意事项
+## 6. 安全注意事项
 
-1. **API Key 存储**：当前存储在 localStorage，可被 XSS 攻击窃取。生产环境建议通过后端代理。
-2. **输入校验**：用户输入应做长度限制，防止超长 prompt。
-3. **HTTPS**：API 请求必须使用 HTTPS。
-4. **CORS**：DeepSeek API 支持跨域请求，但需确保域名白名单配置正确。
+1. **API Key 注入**：生产环境由服务端读取环境变量（如 `DEEPSEEK_API_KEY`）并在转发时注入，密钥不下发到浏览器；浏览器端 BYOK 仅作本地开发兜底。代理对错误信息中的密钥掩码为 `***`。
+2. **输入校验**：用户输入应做长度限制，防止超长 prompt；上传图片做类型/尺寸校验。
+3. **HTTPS**：所有 API 请求必须使用 HTTPS。
+4. **代理边界**：前端只与自身 `/api/chat` 通信；上游地址与密钥均由服务端掌控。
