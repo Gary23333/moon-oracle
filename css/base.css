@@ -257,3 +257,7 @@ body {
     .star { display: none; }
     .moon { animation: none; }
 }
+
+/* API-key storage consent should remain a compact, readable checkbox. */
+.config-field input[type="checkbox"] { width: auto; margin-right: 0.5rem; }
+.config-field p { color: var(--color-text-muted); font-size: 0.8rem; line-height: 1.6; }

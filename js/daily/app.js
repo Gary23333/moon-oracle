@@ -34,20 +34,30 @@ export const DailyTarotApp = {
         const today = this.getTodayString();
         this.state.today = today;
 
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-            try {
+        this.state.hasDrawn = false;
+        this.state.card = null;
+        this.state.reading = '';
+        this.state.aiReading = '';
+        this.state.streak = 1;
+        this.state.maxStreak = 1;
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
                 const data = JSON.parse(saved);
+                if (!data || typeof data !== 'object') return;
+                this.state.streak = Number.isSafeInteger(data.streak) && data.streak > 0 ? data.streak : 1;
+                this.state.maxStreak = Number.isSafeInteger(data.maxStreak) && data.maxStreak > 0 ? data.maxStreak : 1;
                 this.updateStreak(data.lastDrawDate);
-                if (data.date === today) {
+                const card = getFullDeck().find(card => card.id === data.card?.id);
+                if (data.date === today && card) {
                     this.state.hasDrawn = true;
-                    this.state.card = data.card;
-                    this.state.reading = data.reading || '';
-                    this.state.aiReading = data.aiReading || '';
+                    this.state.card = { ...card, orientation: data.card.orientation === '逆位' ? '逆位' : '正位' };
+                    this.state.reading = this.getCardReading(this.state.card);
+                    this.state.aiReading = typeof data.aiReading === 'string' ? data.aiReading : '';
                 }
-            } catch (e) {
-                console.warn('每日塔罗数据解析失败:', e.message);
             }
+        } catch (e) {
+            console.warn('每日塔罗数据读取失败:', e.message);
         }
     },
 
@@ -163,7 +173,11 @@ export const DailyTarotApp = {
             maxStreak: this.state.maxStreak,
             lastDrawDate: this.state.today
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } catch {
+            MoonUtils.showToast('浏览器存储不可用，今日记录暂未保存');
+        }
     },
 
     saveToHistory(card, reading) {
@@ -337,4 +351,6 @@ export const DailyTarotApp = {
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => DailyTarotApp.init());
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', () => DailyTarotApp.init());
+}

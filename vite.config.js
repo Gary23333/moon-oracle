@@ -6,12 +6,12 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        index: resolve(__dirname, 'index.html'),
-        tarot: resolve(__dirname, 'tarot.html'),
-        wheel: resolve(__dirname, 'wheel.html'),
-        daily: resolve(__dirname, 'daily.html'),
-        quick: resolve(__dirname, 'quick.html'),
-        history: resolve(__dirname, 'history.html')
+        index: resolve(import.meta.dirname, 'index.html'),
+        tarot: resolve(import.meta.dirname, 'tarot.html'),
+        wheel: resolve(import.meta.dirname, 'wheel.html'),
+        daily: resolve(import.meta.dirname, 'daily.html'),
+        quick: resolve(import.meta.dirname, 'quick.html'),
+        history: resolve(import.meta.dirname, 'history.html')
       }
     }
   }

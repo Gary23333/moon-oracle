@@ -13,13 +13,14 @@ export const WheelAIGenerator = {
         if (jsonMatch) {
             try {
                 const data = JSON.parse(jsonMatch[0]);
-                if (data.options && Array.isArray(data.options) && data.options.length >= 2) {
+                if (Array.isArray(data.options) && data.options.length >= 2 &&
+                    data.options.every(option => typeof option === 'string' && option.trim().length > 0)) {
                     return {
                         success: true,
                         data: {
-                            name: data.name || '自定义转盘',
-                            icon: data.icon || '🎡',
-                            options: data.options.slice(0, 12)
+                            name: typeof data.name === 'string' ? data.name.slice(0, 60) : '自定义转盘',
+                            icon: typeof data.icon === 'string' ? data.icon.slice(0, 16) : '🎡',
+                            options: data.options.slice(0, 12).map(option => option.trim().slice(0, 40))
                         }
                     };
                 }
@@ -41,7 +42,7 @@ export const WheelAIGenerator = {
 
     // ========== Feature 1: OCR 截图识别 ==========
 
-    // 按需加载 Tesseract.js（npm 包，Vite 会自动处理其 worker 打包与加载路径）
+    // 按需加载 Tesseract.js API；默认 worker、WASM 和语言模型仍需从外部下载。
     async _loadTesseract() {
         const { default: Tesseract } = await import('tesseract.js');
         return Tesseract;

@@ -4,13 +4,12 @@
 
 # 🔮 月影决策屋 · Moon Oracle
 
-**AI 驱动的塔罗占卜 & 命运转盘 · 零依赖 · 零构建 · 零服务器**
+**AI 驱动的塔罗占卜 & 命运转盘 · Vanilla JS · Vite 构建 · 纯静态部署**
 
 <sub><i>在星辰与烛火之间，让命运为你指引方向</i></sub>
 
 <br>
 
-<a href="https://gary23333.github.io/moon-oracle/"><img alt="Demo" src="https://img.shields.io/badge/🌐_在线_Demo-Visit-d4a843?style=for-the-badge"></a>
 <a href="#-快速开始"><img alt="Quick Start" src="https://img.shields.io/badge/🚀_快速开始-5_min-2dd4bf?style=for-the-badge"></a>
 <a href="https://github.com/Gary23333/moon-oracle/blob/main/CHANGELOG.md"><img alt="v3.0.0" src="https://img.shields.io/badge/version-v3.0.0-8b5cf6?style=for-the-badge"></a>
 <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-d4a843?style=for-the-badge"></a>
@@ -104,13 +103,17 @@
 
 ## 🚀 快速开始
 
+需要 **Node.js 22.12+**（推荐 Node 22 或 24 LTS）和 npm。使用 `nvm use` 可切换到 `.nvmrc` 指定的版本。
+前端无业务后端，但开发和构建依赖 Vite；不要通过 `file://` 直接打开源码 HTML。
+旧 GitHub Pages Demo 在 2026-11-05 检查时返回 404，因此暂不提供在线体验链接。本仓库 CI 只验证，不发布网站。
+
 ```bash
 # 1. 克隆仓库
 git clone https://github.com/Gary23333/moon-oracle.git
 cd moon-oracle
 
 # 2. 安装依赖
-npm install
+npm ci
 
 # 3. 启动开发服务器
 npm run dev
@@ -121,9 +124,14 @@ npm run dev
 <summary><b>🛠 配置 DeepSeek API Key（点击展开）</b></summary>
 
 1. 访问 [platform.deepseek.com](https://platform.deepseek.com/) 获取 API Key
-2. 打开任意页面 → 右上角 ⚙️ 齿轮图标
+2. 返回首页 → 右上角 ⚙️ 齿轮图标
 3. 填入 API Key → 保存
-4. 立即生效（存储于浏览器 `localStorage`）
+4. 默认只把 Key 放在当前标签页的 `sessionStorage`，普通设置保存在 `localStorage`
+5. 只有主动勾选“在此设备记住 Key”才会持久保存；可用“清除已保存的 Key”移除
+
+旧版持久保存的 Key 会迁移到当前标签页会话，不自动开启“记住”。会话存储不等于加密，浏览器会话恢复可能恢复数据；共享设备上请主动清除 Key 并关闭页面。
+
+> OCR 无需 API Key，但首次使用会下载识别引擎和语言模型，需要网络；它不是开箱即用的完全离线应用。
 
 > 💡 **没有 API Key？** 预设转盘、自定义转盘、OCR 识别、每日塔罗、答案之书均可**独立使用**，不影响核心体验。
 
@@ -137,11 +145,32 @@ npm run build     # 输出到 dist/
 npm run preview   # 本地预览构建产物
 ```
 
-构建产物为纯静态文件，可部署到 GitHub Pages、Vercel、Netlify、对象存储等任意静态服务。
+构建产物为纯静态文件，可由 GitHub Pages、Vercel、Netlify、对象存储等静态服务托管。
+请发布完整的 `dist/`，不要直接发布仓库源码。`base: './'` 使构建资源可以从子目录加载。
+仓库未包含自动部署流程，需自行配置静态托管。
 
 </details>
 
 ---
+
+## 🧪 验证与测试
+
+```bash
+npm run check       # 所有 JS 文件的语法检查，不是完整风格 lint
+npm test            # Node 内置测试：配置、Key 存储、API、转盘、每日卡、历史、转义
+npm run build       # 构建全部 6 个页面
+npm run test:smoke  # Puppeteer 检查构建产物和无 Key 交互
+npm run validate   # 依次运行以上全部检查
+```
+
+CI 在 Node 22、24 上运行。`npm ci` 会安装 Puppeteer 的测试浏览器；如果已有兼容浏览器，
+可设置 `PUPPETEER_SKIP_DOWNLOAD=true` 安装，并用 `PUPPETEER_EXECUTABLE_PATH` 指向浏览器。
+只有隔离 CI 容器需要时才设置 `PUPPETEER_NO_SANDBOX=true`；日常运行保留浏览器沙箱。
+`SMOKE_SCREENSHOT_DIR` 可选，用于保存本次 smoke 的移动端截图。
+
+Smoke 拦截外部请求，用假 Key 验证设置，覆盖 6 页加载、预设/自定义转盘、每日抽牌重载、
+快占和历史弹窗。它不证明真实 AI 服务、定位、外部字体/牌图或 OCR 模型下载可用。
+真实 AI 测试需自己的限额 Key，端点须支持浏览器 CORS 和所选模型。
 
 ## 📚 详细功能
 
@@ -201,7 +230,7 @@ npm run preview   # 本地预览构建产物
 | 能力 | 说明 |
 |:---|:---|
 | DeepSeek API | OpenAI 兼容格式 · 思考模式 · 120 秒超时 · AbortController 取消 |
-| 配置系统 | localStorage 持久化 · deepMerge 递归合并 · 可自定义全部提示词模板 |
+| 配置系统 | 普通配置 localStorage · Key 默认 sessionStorage · deepMerge 递归合并 |
 | 视觉系统 | 150 颗闪烁星星 · 月亮光晕 · 粒子爆发 · 屏幕闪光 |
 | 无障碍 | ARIA 属性 · 键盘导航 · 焦点管理 · `prefers-reduced-motion` |
 | 响应式 | 完美适配移动端 · 768px 断点 |
@@ -218,7 +247,7 @@ npm run preview   # 本地预览构建产物
 | AI | **DeepSeek API** | 塔罗解读 · 转盘生成 · 趣味解读 |
 | OCR | **Tesseract.js 7** | 浏览器端截图文字识别 |
 | 字体 | Google Fonts (Cinzel + Noto Serif SC + Ma Shan Zheng) | 神秘主题排版 |
-| 存储 | `localStorage` | 配置 · 历史 · 连续打卡 |
+| 存储 | `localStorage` + `sessionStorage` | 普通配置/历史/打卡持久化，Key 默认仅会话 |
 | 定位 | Geolocation API | 附近美食推荐 |
 | 网络 | HTTPS + AbortController + 120s 超时 | API 安全调用 |
 
@@ -288,7 +317,8 @@ moon-oracle/
 | 字段 | 默认值 | 说明 |
 |:---|:---|:---|
 | `apiUrl` | `https://api.deepseek.com` | DeepSeek API 端点 |
-| `apiKey` | _(空)_ | DeepSeek API 密钥 |
+| `apiKey` | _(空)_ | API 密钥，默认仅当前标签页会话 |
+| `rememberApiKey` | `false` | 明确选择后才持久化 Key |
 | `model` | `deepseek-v4-flash` | AI 模型名称 |
 | `thinkingEnabled` | `true` | 是否启用深度思考模式 |
 | `thinkingEffort` | `high` | 思考强度（`high` 标准 / `max` 最强） |
@@ -346,12 +376,14 @@ moon-oracle/
 
 ## 🔒 安全说明
 
-- **API Key 安全** — 仅存储在浏览器 `localStorage`，不会发送到第三方服务器
-- **HTTPS 加密** — 所有 API 请求通过 HTTPS 加密传输
-- **XSS 防护** — 用户输入先 HTML 转义再应用 Markdown 渲染
-- **请求控制** — 120 秒超时 + `AbortController` 主动取消
-- **代码安全** — 内联事件处理器已全部替换为 `addEventListener`
-- **依赖最小化** — 仅 1 个运行时依赖（Tesseract.js），攻击面小
+- **浏览器直连**：Key、提问、上下文会发送到你配置的 API 提供商，并非“不发送到第三方”。本项目没有密钥代理或后端保险箱。
+- **Key 保存**：默认 `sessionStorage`，持久化需显式选择。两种存储都可被同源脚本访问；XSS、恶意扩展和被篡改的部署仍可能窃取 Key。请用独立、限额 Key，不在共享设备上记住。
+- **地址校验**：API 要求 HTTPS，仅 `localhost`、`127.0.0.1`、`[::1]` 允许 HTTP 调试；拒绝 URL 内账号、查询参数、片段及重定向。保存前确认目标地址可信。端点变更不会自动替你更换 Key。
+- **请求控制**：默认 120 秒超时，覆盖响应读取；新请求会取消旧请求。服务端错误和 CORS/网络错误仍可能发生。
+- **渲染**：AI 文本先转义，再处理有限 Markdown；测试覆盖转义，不构成完整安全审计。
+- **外部资源与隐私**：Google Fonts、Wikimedia 牌图和 OCR 引擎/语言包需要联网；OCR 图片在浏览器内处理。附近推荐会向配置的 AI 服务发送定位坐标，不是实时地图商家查询，请核实推荐是否真实营业。
+- **本地历史**：提问和解读保存在该浏览器的历史记录中，最多 50 条；共享设备使用后可在历史页清除。清除 Key 不会清除历史。
+- **用途限制**：仅供娱乐和自我反思，不应用于医疗、法律、财务等重要决策。不要把敏感个人信息填入提问。
 
 ---
 

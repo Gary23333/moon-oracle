@@ -24,7 +24,7 @@ export class WheelRenderer {
     }
 
     resize() {
-        const size = Math.min(this.canvas.parentElement.clientWidth - 40, 400);
+        const size = Math.max(80, Math.min(this.canvas.parentElement.clientWidth - 40, 400));
         this.canvas.width = size;
         this.canvas.height = size;
         this.centerX = size / 2;
@@ -38,8 +38,8 @@ export class WheelRenderer {
         const minWeight = 1;
         const maxWeight = 100;
         
-        return weights.map(w => {
-            let weight = w;
+        return Array.from({ length: count }, (_, index) => {
+            let weight = Number(weights[index]);
             if (isNaN(weight) || !isFinite(weight) || weight <= 0) {
                 weight = 1;
             }
@@ -189,7 +189,7 @@ export class WheelRenderer {
         const normalizedRotation = ((rotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
         
         // 指针在顶部（12点钟方向）
-        let pointerAngle = (2 * Math.PI - normalizedRotation) % (2 * Math.PI);
+        let pointerAngle = (3 * Math.PI / 2 - normalizedRotation + 2 * Math.PI) % (2 * Math.PI);
         if (pointerAngle < 0) pointerAngle += 2 * Math.PI;
 
         let currentAngle = 0;

@@ -58,9 +58,19 @@ git checkout -b fix/你的修复名
 
 ### 3. 开发 & 测试
 
-- 用浏览器直接打开 `index.html` 进行测试
-- 确保在 Chrome、Firefox、Safari 上均正常运行
-- 移动端也需要测试（响应式）
+使用 Node.js 22.12+，通过 HTTP 开发服务访问，不能直接双击源码 HTML：
+
+```bash
+npm ci
+npm run dev
+npm run validate
+```
+
+- `validate` 包含 JS 语法检查、Node 单元测试、Vite 多页构建、Chromium smoke。
+- CI 测试 Node 22 和 24，浏览器测试不调用真实付费 API。
+- UI 改动请检查移动布局和重复/取消操作。Firefox、Safari 需要额外手工验证，不能把 Chromium 通过当作跨浏览器验证。
+- 不要提交 API Key、`.env`、个人历史或带 Key 的截图。浏览器 Key 默认仅会话保存。
+- 可在开发服务运行时执行 `node scripts/screenshot.mjs`；默认输出 `screenshots/`，可用 `SCREENSHOT_DIR` 指定其他目录。
 
 ### 4. 提交 PR
 
@@ -83,7 +93,7 @@ git push origin feature/你的功能名
 - 函数和变量使用驼峰命名 (`camelCase`)
 - 对象使用大驼峰 (`MoonConfig`, `TarotApp`)
 - 使用单引号字符串
-- 每个模块使用 IIFE 或对象字面量封装
+- 使用 ES Modules；逻辑尽量保持可在 Node 测试的独立模块
 - 添加必要的注释说明逻辑
 
 ### CSS

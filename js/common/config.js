@@ -4,7 +4,8 @@ export const MoonConfig = {
     defaults: {
         apiUrl: 'https://api.deepseek.com',
         apiKey: '',
-        model: 'deepseek-v4-flash', // DeepSeek 官方支持的模型，支持思考模式
+        rememberApiKey: false,
+        model: 'deepseek-v4-flash', // 可按服务商当前可用模型修改
         thinkingEnabled: true,
         thinkingEffort: 'high',
         showThinking: false,
@@ -58,12 +59,16 @@ export const MoonConfig = {
 
     init() {
         this.current = this.load();
+        // Migrate legacy persistent keys to the current tab unless the user opted in.
+        this.save();
         return this.current;
     },
 
     _deepMerge(target, source) {
-        const result = { ...target };
+        const result = structuredClone(target);
+        if (!source || typeof source !== 'object' || Array.isArray(source)) return result;
         for (const key of Object.keys(source)) {
+            if (['__proto__', 'constructor', 'prototype'].includes(key)) continue;
             if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])
                 && target[key] && typeof target[key] === 'object' && !Array.isArray(target[key])) {
                 result[key] = this._deepMerge(target[key], source[key]);
@@ -74,24 +79,55 @@ export const MoonConfig = {
         return result;
     },
 
-    load() {
-        const saved = localStorage.getItem('moon_oracle_config');
-        if (saved) {
-            try {
-                return this._deepMerge(this.defaults, JSON.parse(saved));
-            } catch (e) {
-                return { ...this.defaults };
-            }
+    _read(storageName, key) {
+        try {
+            return globalThis[storageName].getItem(key);
+        } catch {
+            return null;
         }
-        return { ...this.defaults };
+    },
+
+    load() {
+        let saved = {};
+        try {
+            saved = JSON.parse(this._read('localStorage', 'moon_oracle_config') || '{}');
+        } catch { /* A corrupt config must not prevent the app from starting. */ }
+        const config = this._deepMerge(this.defaults, saved);
+        config.rememberApiKey = config.rememberApiKey === true;
+        const sessionKey = this._read('sessionStorage', 'moon_oracle_api_key');
+        config.apiKey = config.rememberApiKey
+            ? config.apiKey
+            : (sessionKey ?? config.apiKey); // Preserve a legacy key for this tab only.
+        if (typeof config.apiKey !== 'string') config.apiKey = '';
+        return config;
     },
 
     save() {
+        const stored = { ...this.current };
+        if (!stored.rememberApiKey) delete stored.apiKey;
+        let saved = true;
+        // Remove persistent credentials before attempting session storage.
         try {
-            localStorage.setItem('moon_oracle_config', JSON.stringify(this.current));
-        } catch (e) {
-            console.warn('配置保存失败:', e.message);
+            localStorage.setItem('moon_oracle_config', JSON.stringify(stored));
+        } catch {
+            saved = false;
         }
+        try {
+            if (!this.current.rememberApiKey && this.current.apiKey) {
+                sessionStorage.setItem('moon_oracle_api_key', this.current.apiKey);
+            } else {
+                sessionStorage.removeItem('moon_oracle_api_key');
+            }
+        } catch {
+            saved = false;
+        }
+        return saved;
+    },
+
+    clearApiKey() {
+        this.current.apiKey = '';
+        this.current.rememberApiKey = false;
+        return this.save();
     },
 
     get(key) {
@@ -104,7 +140,7 @@ export const MoonConfig = {
     },
 
     reset() {
-        this.current = { ...this.defaults };
+        this.current = structuredClone(this.defaults);
         this.save();
     }
 };

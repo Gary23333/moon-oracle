@@ -130,12 +130,16 @@
         <div class="config-section">
             <div class="config-section-title">LLM 配置</div>
             <div class="config-field">
-                <label>API 地址</label>
+                <label for="cfgApiUrl">API 地址（仅 HTTPS 或本机 HTTP）</label>
                 <input type="text" id="cfgApiUrl" placeholder="https://api.deepseek.com">
             </div>
             <div class="config-field">
-                <label>API Key</label>
-                <input type="password" id="cfgApiKey" placeholder="sk-...">
+                <label for="cfgApiKey">API Key</label>
+                <input type="password" id="cfgApiKey" placeholder="sk-..." autocomplete="off" aria-describedby="keyStorageHint">
+                <p id="keyStorageHint">默认只保存在当前标签页会话。Key 和提问将发送给你配置的 API 服务，请仅使用可信地址。</p>
+                <label><input type="checkbox" id="cfgRememberApiKey"> 在此设备记住 Key（共享设备请勿勾选）</label>
+                <p>浏览器存储不是保险箱，同源脚本或恶意扩展仍可能读取 Key。</p>
+                <button type="button" class="config-btn config-btn-secondary" id="configClearKey">清除已保存的 Key</button>
             </div>
             <div class="config-field">
                 <label>模型名称</label>

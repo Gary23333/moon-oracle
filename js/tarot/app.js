@@ -1,5 +1,6 @@
 // 月影决策屋 - 塔罗占卜主逻辑
 
+import { MoonHistory } from '../history/store.js';
 import { MoonConfig } from '../common/config.js';
 import { MoonAPI } from '../common/api.js';
 import { MoonUtils } from '../common/utils.js';
@@ -370,6 +371,13 @@ export const TarotApp = {
                 { role: 'assistant', content: result.content, thinking: result.thinking }
             ];
 
+            MoonHistory.addRecord('tarot', {
+                question: this.state.question,
+                revealedCards: this.state.revealedCards,
+                readingResult: result.content,
+                spreadName: spread.name,
+                spreadPositions: spread.positions
+            }, `${spread.name}：${this.state.question}`);
             MoonUtils.hideLoading();
             this.showResult(result);
         } catch (error) {
@@ -539,4 +547,6 @@ export const TarotApp = {
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => TarotApp.init());
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', () => TarotApp.init());
+}

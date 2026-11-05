@@ -162,6 +162,8 @@ export const WheelApp = {
 
         const canvas = this._safeGetElement('wheelCanvas');
         if (!canvas) return;
+        // Measure the canvas only after its view is visible.
+        this.showView('wheel');
         this.state.wheel = new WheelRenderer(canvas, options, weights);
         this.state.wheel.onResult = (result) => this.showResult(result, name);
 

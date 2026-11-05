@@ -31,7 +31,7 @@ export const MoonUtils = {
 
     sanitize(text) {
         if (!text) return '';
-        return text
+        return String(text)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
@@ -64,10 +64,12 @@ export const MoonUtils = {
 
         let cancelled = false;
         let intervalId = null;
+        let resolveTyping = null;
         const controller = {
             cancel() {
                 cancelled = true;
                 if (intervalId) { clearInterval(intervalId); intervalId = null; }
+                resolveTyping?.();
             }
         };
         this._activeTyping = controller;
@@ -101,6 +103,7 @@ export const MoonUtils = {
         let charIndex = 0;
 
         return new Promise(resolve => {
+            resolveTyping = resolve;
             intervalId = setInterval(() => {
                 if (cancelled) {
                     clearInterval(intervalId);

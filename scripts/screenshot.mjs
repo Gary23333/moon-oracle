@@ -5,7 +5,7 @@ import path from 'node:path';
 
 const PORT = process.env.VITE_PORT || '5173';
 const BASE_URL = `http://localhost:${PORT}`;
-const OUT_DIR = '/workspace/screenshots';
+const OUT_DIR = path.resolve(process.env.SCREENSHOT_DIR || 'screenshots');
 
 const PAGES = [
   { name: 'index',   file: 'index.html',   out: 'desktop-index.png',   mobile: true  },
@@ -59,8 +59,9 @@ async function main() {
 
   console.log(`Launching headless browser (puppeteer)...`);
   const browser = await puppeteer.launch({
-    headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    headless: true,
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+    args: process.env.PUPPETEER_NO_SANDBOX === 'true' ? ['--no-sandbox'] : [],
   });
 
   const results = [];

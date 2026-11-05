@@ -10,7 +10,12 @@ export const MoonHistory = {
         if (this._records !== null) return this._records;
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
-            this._records = saved ? JSON.parse(saved) : [];
+            const parsed = saved ? JSON.parse(saved) : [];
+            this._records = Array.isArray(parsed) ? parsed.filter(record =>
+                record && Number.isSafeInteger(record.id) && Number.isFinite(record.timestamp) &&
+                typeof record.type === 'string' && typeof record.summary === 'string' &&
+                record.data && typeof record.data === 'object'
+            ).slice(-MAX_RECORDS) : [];
         } catch (e) {
             this._records = [];
         }
@@ -32,8 +37,10 @@ export const MoonHistory = {
     },
 
     addRecord(type, data, summary) {
+        this._load();
+        const latestId = Math.max(0, ...this._records.map(record => record.id));
         const record = {
-            id: Date.now(),
+            id: Math.max(Date.now(), latestId + 1),
             type: type,
             timestamp: Date.now(),
             data: data,

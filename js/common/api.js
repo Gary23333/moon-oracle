@@ -17,15 +17,31 @@ export const MoonAPI = {
         }
     },
 
+    validateApiUrl(value) {
+        let url;
+        try { url = new URL(value.trim()); } catch {
+            throw new Error('请输入有效的 API 地址');
+        }
+        const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+        if ((url.protocol !== 'https:' && !(local && url.protocol === 'http:')) ||
+            url.username || url.password || url.search || url.hash) {
+            throw new Error('API 地址必须使用 HTTPS（本机允许 HTTP），且不能含账号、查询参数或片段');
+        }
+        return url.href.replace(/\/+$/, '');
+    },
+
     async chat(messages, options = {}) {
         const config = MoonConfig.current;
         if (!config.apiKey) {
             throw new Error('请先配置 API Key');
         }
 
+        const apiUrl = this.validateApiUrl(config.apiUrl);
         this.abort();
-        this._controller = new AbortController();
-        this._timeoutId = setTimeout(() => this._controller.abort(), options.timeout || 120000);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), options.timeout || 120000);
+        this._controller = controller;
+        this._timeoutId = timeoutId;
 
         const body = {
             model: options.model || config.model,
@@ -39,18 +55,16 @@ export const MoonAPI = {
         }
 
         try {
-            const response = await fetch(`${config.apiUrl}/chat/completions`, {
+            const response = await fetch(`${apiUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${config.apiKey}`
                 },
                 body: JSON.stringify(body),
-                signal: this._controller.signal
+                redirect: 'error',
+                signal: controller.signal
             });
-
-            clearTimeout(this._timeoutId);
-            this._timeoutId = null;
 
             if (!response.ok) {
                 const errorText = await response.text();
@@ -77,12 +91,17 @@ export const MoonAPI = {
                 usage: data.usage
             };
         } catch (err) {
-            clearTimeout(this._timeoutId);
-            this._timeoutId = null;
             if (err.name === 'AbortError') {
                 throw new Error('请求已取消或超时');
             }
             throw err;
+        } finally {
+            clearTimeout(timeoutId);
+            // An older aborted request must not clear the newer request's timer.
+            if (this._controller === controller) {
+                this._controller = null;
+                this._timeoutId = null;
+            }
         }
     },
 

@@ -1,6 +1,7 @@
 // 月影决策屋 - 首页入口（抽取自原 index.html 内联脚本）
 
 import { MoonConfig } from './common/config.js';
+import { MoonAPI } from './common/api.js';
 import { MoonUtils } from './common/utils.js';
 import { MoonEffects } from './common/effects.js';
 
@@ -23,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const c = MoonConfig.current;
         document.getElementById('cfgApiUrl').value = c.apiUrl || '';
         document.getElementById('cfgApiKey').value = c.apiKey || '';
+        document.getElementById('cfgRememberApiKey').checked = c.rememberApiKey === true;
         document.getElementById('cfgModel').value = c.model || '';
         document.getElementById('cfgThinkingToggle').classList.toggle('active', c.thinkingEnabled);
         document.getElementById('cfgThinkingEffort').value = c.thinkingEffort || 'high';
@@ -32,6 +34,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cfgPromptGreeting').value = c.tarotPrompts?.greeting || '';
         document.getElementById('cfgPromptReading').value = c.tarotPrompts?.reading || '';
         document.getElementById('cfgPromptWheel').value = c.wheelPrompts?.generate || '';
+        for (const id of ['cfgThinkingToggle', 'cfgShowThinkingToggle', 'cfgWheelAIToggle']) {
+            const toggle = document.getElementById(id);
+            toggle.setAttribute('aria-checked', String(toggle.classList.contains('active')));
+        }
     }
 
     function setupToggle(id, key) {
@@ -55,8 +61,18 @@ document.addEventListener('DOMContentLoaded', () => {
     setupToggle('cfgWheelAIToggle', 'wheelResultAI');
 
     configSave.addEventListener('click', () => {
-        MoonConfig.set('apiUrl', document.getElementById('cfgApiUrl').value);
-        MoonConfig.set('apiKey', document.getElementById('cfgApiKey').value);
+        let apiUrl;
+        try {
+            apiUrl = MoonAPI.validateApiUrl(document.getElementById('cfgApiUrl').value);
+        } catch (error) {
+            MoonUtils.showToast(error.message);
+            return;
+        }
+        Object.assign(MoonConfig.current, {
+            apiUrl,
+            apiKey: document.getElementById('cfgApiKey').value.trim(),
+            rememberApiKey: document.getElementById('cfgRememberApiKey').checked
+        });
         MoonConfig.set('model', document.getElementById('cfgModel').value);
         MoonConfig.set('thinkingEffort', document.getElementById('cfgThinkingEffort').value);
         MoonConfig.set('readerPersona', document.getElementById('cfgPersona').value);
@@ -69,9 +85,15 @@ document.addEventListener('DOMContentLoaded', () => {
             ...MoonConfig.current.wheelPrompts,
             generate: document.getElementById('cfgPromptWheel').value
         };
-        MoonConfig.save();
-        configPanel.classList.remove('active');
-        MoonUtils.showToast('配置已保存');
+        const saved = MoonConfig.save();
+        if (saved) configPanel.classList.remove('active');
+        MoonUtils.showToast(saved ? '配置已保存' : '浏览器存储不可用，配置仅本页生效；清除旧 Key 请检查浏览器网站数据');
+    });
+
+    document.getElementById('configClearKey').addEventListener('click', () => {
+        const cleared = MoonConfig.clearApiKey();
+        loadConfigUI();
+        MoonUtils.showToast(cleared ? '已清除 Key' : '无法清除浏览器存储，请手动清除本网站数据');
     });
 
     configReset.addEventListener('click', () => {
