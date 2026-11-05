@@ -73,7 +73,9 @@ try {
     assert.equal(await page.$eval('#resultArea', element => getComputedStyle(element).display), 'block');
     assert.notEqual(await page.$eval('#resultOption', element => element.textContent), '选项');
     await page.click('#newWheelBtn');
-    await page.type('#customInput', 'A:1\nB:3');
+    // Bare Enter submits this textarea; use its supported comma separator when typing.
+    await page.type('#customInput', 'A:1,B:3');
+    assert.equal(await page.$eval('#customInput', input => input.value), 'A:1,B:3');
     await page.click('#customStartBtn');
     assert.equal(await page.$eval('#viewWheel', element => element.classList.contains('active')), true);
     if (process.env.SMOKE_SCREENSHOT_DIR) await page.screenshot({ path: `${process.env.SMOKE_SCREENSHOT_DIR}/wheel-mobile.png`, fullPage: true });
@@ -92,8 +94,15 @@ try {
     await page.type('#questionInput', '<img src=x onerror=alert(1)> Should I try?');
     await page.click('#answerBtn');
     await page.waitForSelector('.answer-card');
+    await page.waitForFunction(() => !document.querySelector('#oracleBtn').disabled);
     await page.click('#oracleBtn');
     await page.waitForSelector('.oracle-card');
+    await page.waitForFunction(() => {
+        const records = JSON.parse(localStorage.getItem('moon_oracle_history') || '[]');
+        return records.some(record => record.type === 'daily') &&
+            records.some(record => record.data?.type === 'answer_book') &&
+            records.some(record => record.data?.type === 'oracle');
+    });
     await page.goto(`${origin}/history.html`, { waitUntil: 'networkidle0' });
     assert.ok(await page.$$eval('.record-card', cards => cards.length >= 3));
     await page.click('.record-card');

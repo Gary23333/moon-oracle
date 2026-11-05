@@ -28,6 +28,41 @@ test('wheel result overrides the hidden CSS default and exposes its controls', t
 beforeEach(() => { resetStorage(); MoonConfig.init(); MoonHistory._records = null; });
 afterEach(() => { MoonAPI.chatSingle = chatSingle; });
 
+test('custom wheels parse both comma-separated and pasted multiline weights', t => {
+    const input = { value: '' };
+    t.mock.method(WheelApp, '_safeGetElement', () => input);
+    t.mock.method(MoonUtils, 'showToast', message => assert.fail(message));
+    const start = t.mock.method(WheelApp, 'startWheel', () => {});
+    for (const value of ['A:1,B:3', 'A:1\nB:3']) {
+        input.value = value;
+        WheelApp.startCustom();
+        assert.deepEqual(start.mock.calls.at(-1).arguments, ['自定义转盘', '🎡', ['A', 'B'], [1, 3]]);
+    }
+});
+
+test('custom input submits on Enter and leaves Shift+Enter available for newlines', t => {
+    const originalDocument = globalThis.document;
+    let keydown;
+    globalThis.document = { querySelectorAll: () => [] };
+    t.mock.method(WheelApp, '_safeGetElement', id => id === 'customInput' ? {
+        addEventListener: (type, listener) => { if (type === 'keydown') keydown = listener; }
+    } : null);
+    const start = t.mock.method(WheelApp, 'startCustom', () => {});
+    let prevented = 0;
+    try {
+        WheelApp.bindEvents();
+        keydown({ key: 'Enter', shiftKey: false, preventDefault: () => prevented++ });
+        assert.equal(start.mock.callCount(), 1);
+        assert.equal(prevented, 1);
+        keydown({ key: 'Enter', shiftKey: true, preventDefault: () => prevented++ });
+        assert.equal(start.mock.callCount(), 1);
+        assert.equal(prevented, 1);
+    } finally {
+        if (originalDocument === undefined) delete globalThis.document;
+        else globalThis.document = originalDocument;
+    }
+});
+
 test('AI-generated wheels reject non-string and empty options before rendering', async t => {
     t.mock.method(console, 'error', () => {});
     for (const options of [[{}, 'valid'], ['valid', 1], ['valid', ' '], ['one']]) {
