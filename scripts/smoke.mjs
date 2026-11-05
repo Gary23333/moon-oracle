@@ -68,7 +68,9 @@ try {
     assert.ok(await page.$eval('#wheelCanvas', canvas => canvas.width >= 80 && canvas.width <= 400));
     await page.click('#spinBtn');
     assert.equal(await page.$eval('#spinBtn', button => button.disabled), true);
-    await page.waitForFunction(() => document.querySelector('#resultArea').style.display !== 'none', { timeout: 10000 });
+    // Check rendered visibility: clearing inline display can still leave CSS display:none.
+    await page.waitForSelector('#resultArea', { visible: true, timeout: 10000 });
+    assert.equal(await page.$eval('#resultArea', element => getComputedStyle(element).display), 'block');
     assert.notEqual(await page.$eval('#resultOption', element => element.textContent), '选项');
     await page.click('#newWheelBtn');
     await page.type('#customInput', 'A:1\nB:3');
@@ -110,3 +112,4 @@ try {
     if (browser) await browser.close();
     await new Promise(resolve => server.httpServer.close(resolve));
 }
+

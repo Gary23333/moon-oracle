@@ -205,7 +205,8 @@ export const WheelApp = {
         const resultWheelName = this._safeGetElement('resultWheelName');
 
         if (spinBtn) spinBtn.style.display = 'none';
-        if (resultArea) resultArea.style.display = '';
+        // Override the stylesheet's hidden default when a spin finishes.
+        if (resultArea) resultArea.style.display = 'block';
         if (resultOption) resultOption.textContent = result.option;
         if (resultWheelName) resultWheelName.textContent = wheelName;
 
@@ -445,4 +446,7 @@ export const WheelApp = {
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => WheelApp.init());
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', () => WheelApp.init());
+}
+

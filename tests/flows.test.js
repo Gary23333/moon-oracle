@@ -2,6 +2,8 @@ import test, { beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { WheelAIGenerator } from '../js/wheel/ai-generator.js';
 import { TarotApp } from '../js/tarot/app.js';
+import { WheelApp } from '../js/wheel/app.js';
+import { MoonEffects } from '../js/common/effects.js';
 import { MoonAPI } from '../js/common/api.js';
 import { MoonConfig } from '../js/common/config.js';
 import { MoonUtils } from '../js/common/utils.js';
@@ -10,6 +12,19 @@ import { getFullDeck } from '../js/tarot/cards-data.js';
 import { resetStorage } from './helpers.js';
 
 const chatSingle = MoonAPI.chatSingle;
+
+test('wheel result overrides the hidden CSS default and exposes its controls', t => {
+    const elements = Object.fromEntries(['spinBtn', 'resultArea', 'resultOption', 'resultWheelName'].map(id => [id, { style: {}, textContent: '' }]));
+    elements.resultArea.style.display = 'none';
+    t.mock.method(WheelApp, '_safeGetElement', id => elements[id]);
+    t.mock.method(MoonEffects, 'createFlash', () => {});
+    t.mock.method(MoonConfig, 'get', () => false);
+    WheelApp.showResult({ option: 'A' }, 'Test wheel');
+    assert.equal(elements.resultArea.style.display, 'block');
+    assert.equal(elements.spinBtn.style.display, 'none');
+    assert.equal(elements.resultOption.textContent, 'A');
+    assert.equal(elements.resultWheelName.textContent, 'Test wheel');
+});
 beforeEach(() => { resetStorage(); MoonConfig.init(); MoonHistory._records = null; });
 afterEach(() => { MoonAPI.chatSingle = chatSingle; });
 
@@ -59,3 +74,4 @@ test('cancelled typing resolves its pending promise', async t => {
         else globalThis.document = oldDocument;
     }
 });
+
